@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 from app.database import SessionLocal, engine
 from app import models, schemas
-
+from app.services.pattern_service import get_weekly_speedning
 # create tables
 models.Base.metadata.create_all(bind=engine)
 
@@ -27,3 +27,9 @@ def add_expense(expense: schemas.ExpenseCreate, db: Session = Depends(get_db)):
 @router.get("/")
 def get_expenses(db: Session = Depends(get_db)):
     return db.query(models.Expense).all()
+
+
+@router.get("/insights/weekly")
+def weekly_insights(db : Session = Depends(get_db)):
+    return get_weekly_speedning(db)
+
