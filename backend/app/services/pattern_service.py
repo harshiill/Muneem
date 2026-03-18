@@ -20,10 +20,15 @@ def get_weekly_speedning(db : Session):
     if category_breakdown:
         top_category = max(category_breakdown, key = category_breakdown.get)
 
-    
+    insight = ""
+
+    if top_category:
+        insight = f"You spent most on {top_category} this week. Consider reducing spending in this category."
+
     return {
         "total_spending" : total,
         "transactions" : len(expenses),
         "category_breakdown": dict(category_breakdown),
-        "top_category": top_category
+        "top_category": top_category,
+        "insight" : insight
     }
