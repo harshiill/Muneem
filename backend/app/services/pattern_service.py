@@ -2,6 +2,7 @@ from sqlalchemy.orm import Session
 from app.models import Expense
 from datetime import datetime, timedelta
 from collections import defaultdict
+from app.services.ai_service import generate_ai_advice
 
 def get_weekly_speedning(db : Session):
     one_week_ago = datetime.utcnow() - timedelta(days=7)
@@ -24,11 +25,19 @@ def get_weekly_speedning(db : Session):
 
     if top_category:
         insight = f"You spent most on {top_category} this week. Consider reducing spending in this category."
+        
+    ai_advice = generate_ai_advice(
+        {
+           "total_spending" : total,
+           "top_category": top_category,
+        }
+    )
 
     return {
         "total_spending" : total,
         "transactions" : len(expenses),
         "category_breakdown": dict(category_breakdown),
         "top_category": top_category,
-        "insight" : insight
+        "insight" : insight,
+        "ai_advice" : ai_advice
     }
