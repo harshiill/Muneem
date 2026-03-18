@@ -1,15 +1,29 @@
-from fastapi import APIRouter
-from app.schemas import ExpenseCreate
+from fastapi import APIRouter, Depends
+from sqlalchemy.orm import Session
+from app.database import SessionLocal, engine
+from app import models, schemas
 
-router = APIRouter()
+# create tables
+models.Base.metadata.create_all(bind=engine)
 
-expenses = []
+router = APIRouter(prefix="/expenses", tags=["Expenses"])
 
-@router.post("/expenses")
-def add_expense(expense : ExpenseCreate):
-    expenses.append(expense)
-    return {"message" : "Expense added" , "data" : expense}
+# dependency (DB session)
+def get_db():
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
 
-@router.get("/expenses")
-def get_expenses():
-    return expenses
+@router.post("/")
+def add_expense(expense: schemas.ExpenseCreate, db: Session = Depends(get_db)):
+    new_expense = models.Expense(**expense.dict())
+    db.add(new_expense)
+    db.commit()
+    db.refresh(new_expense)
+    return new_expense
+
+@router.get("/")
+def get_expenses(db: Session = Depends(get_db)):
+    return db.query(models.Expense).all()
