@@ -53,3 +53,16 @@ def set_profile(profile : schemas.UserProfileCreate, db : Session = Depends(get_
 @router.get('/profile')
 def get_profile(db : Session = Depends(get_db)):
         return db.query(models.UserProfile).first()
+
+@router.post("/goals")
+def add_goal(goal: schemas.GoalCreate, db: Session = Depends(get_db)):
+    new_goal = models.Goal(**goal.dict())
+    db.add(new_goal)
+    db.commit()
+    db.refresh(new_goal)
+    return new_goal
+
+
+@router.get("/goals")
+def get_goals(db: Session = Depends(get_db)):
+    return db.query(models.Goal).all()
