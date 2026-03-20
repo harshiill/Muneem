@@ -1,5 +1,5 @@
 from sqlalchemy.orm import Session
-from app.models import Expense
+from app.models import Expense , UserProfile
 from datetime import datetime, timedelta
 from collections import defaultdict
 from app.services.ai_service import generate_ai_advice
@@ -26,10 +26,16 @@ def get_weekly_speedning(db : Session):
     if top_category:
         insight = f"You spent most on {top_category} this week. Consider reducing spending in this category."
         
+    profile = db.query(UserProfile).first()
+    monthly_capacity = profile.monthly_saving_capacity if profile else None
+    monthly_income = profile.monthly_income if profile else None
+    
     ai_advice = generate_ai_advice(
         {
            "total_spending" : total,
            "top_category": top_category,
+           "monthly_capacity" : monthly_capacity,
+           "monthly_income" : monthly_income
         }
     )
 

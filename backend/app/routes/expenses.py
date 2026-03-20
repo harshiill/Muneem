@@ -33,3 +33,23 @@ def get_expenses(db: Session = Depends(get_db)):
 def weekly_insights(db : Session = Depends(get_db)):
     return get_weekly_speedning(db)
 
+@router.post('/profile')
+def set_profile(profile : schemas.UserProfileCreate, db : Session = Depends(get_db)):
+        existing = db.query(models.UserProfile).first()
+        
+        if existing:
+            existing.monthly_saving_capacity = profile.monthly_saving_capacity
+            db.commit
+            db.refresh(existing)
+            return existing
+        
+        new_profile = models.UserProfile(**profile.dict())
+        db.add(new_profile)
+        db.commit()
+        db.refresh(new_profile)
+        return new_profile
+    
+
+@router.get('/profile')
+def get_profile(db : Session = Depends(get_db)):
+        return db.query(models.UserProfile).first()

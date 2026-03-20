@@ -11,3 +11,19 @@ class Expense(Base):
     amount = Column(Float)
     category = Column(String)
     created_at = Column(DateTime, default=datetime.utcnow)
+    
+
+class UserProfile(Base):
+    __tablename__ = "user_profile"
+
+    id = Column(Integer, primary_key=True, index=True)
+    monthly_income = Column(Float)
+    monthly_saving_capacity = Column(Float)
+    
+
+class Goal(Base):
+    __tablename__ = "goals"
+
+    id = Column(Integer, primary_key=True, index=True)
+    title = Column(String)
+    target_amount = Column(Float)
