@@ -5,6 +5,7 @@ class ExpenseCreate(BaseModel):
     title: str
     amount: float
     category: str
+    goal_id: int | None = None
     
 class UserProfileCreate(BaseModel):
     monthly_saving_capacity: float
