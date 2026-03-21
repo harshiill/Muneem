@@ -2,19 +2,13 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 from app.database import SessionLocal, engine
 from app import models, schemas
+from app.database import get_db
 from app.services.pattern_service import get_weekly_speedning
 # create tables
-models.Base.metadata.create_all(bind=engine)
 
 router = APIRouter(prefix="/expenses", tags=["Expenses"])
 
-# dependency (DB session)
-def get_db():
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
+
 
 @router.post("/")
 def add_expense(expense: schemas.ExpenseCreate, db: Session = Depends(get_db)):

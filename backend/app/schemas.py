@@ -16,3 +16,7 @@ class GoalCreate(BaseModel):
     target_amount: float
     deadline: datetime
     goal_type: str  # "saving" or "expense"
+    
+    
+class ChatRequest(BaseModel):
+    message: str
