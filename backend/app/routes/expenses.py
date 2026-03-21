@@ -66,3 +66,15 @@ def add_goal(goal: schemas.GoalCreate, db: Session = Depends(get_db)):
 @router.get("/goals")
 def get_goals(db: Session = Depends(get_db)):
     return db.query(models.Goal).all()
+
+@router.delete("/goals/{goal_id}")
+def delete_goal(goal_id: int, db: Session = Depends(get_db)):
+    goal = db.query(models.Goal).filter(models.Goal.id == goal_id).first()
+
+    if not goal:
+        return {"error": "Goal not found"}
+
+    db.delete(goal)
+    db.commit()
+
+    return {"message": "Goal deleted"}

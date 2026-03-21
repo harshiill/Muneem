@@ -23,6 +23,9 @@ Savings Analysis:
 - Can Meet Saving Goal: {data.get('can_meet_saving_goal')}
 - Total Accumulated Savings: {data.get('accumulated_savings')}
 
+Risk Analysis:
+- Risk Flags: {data.get('risk_flags')}
+
 Goals:
 {data.get('goal_insights')}
 

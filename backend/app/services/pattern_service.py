@@ -54,18 +54,59 @@ def get_weekly_speedning(db: Session):
     monthly_income = profile.monthly_income if profile else None
 
     # 🔹 Goals
+    risk_flags = []
+    
+    if savings is not None and monthly_capacity is not None:
+        if savings < monthly_capacity:
+            risk_flags.append("You may not meet your monthly saving goal.")
+
     goals = db.query(Goal).all()
     goal_insights = []
+    
+    for goal in goals:
 
-    if monthly_capacity:
-        for goal in goals:
-            months_needed = goal.target_amount / monthly_capacity if monthly_capacity > 0 else float('inf')
+        if goal.goal_type == "saving":
+            # Saving-based logic
+            if monthly_capacity:
+                months_needed = goal.target_amount / monthly_capacity
+
+                goal_insights.append({
+                    "goal": goal.title,
+                    "type": "saving",
+                    "months_needed": round(months_needed, 1)
+                })
+
+        elif goal.goal_type == "expense":
+            # Expense-based logic
+            goal_expenses = goal.expenses
+
+            spent = sum(e.amount for e in goal_expenses)
+
+            remaining = goal.target_amount - spent
 
             goal_insights.append({
                 "goal": goal.title,
-                "target_amount": goal.target_amount,
-                "months_needed": round(months_needed, 1)
+                "type": "expense",
+                "spent": spent,
+                "remaining": remaining
             })
+
+    for goal in goals:
+        if monthly_capacity:
+            months_needed = goal.target_amount / monthly_capacity
+
+            if goal.deadline:
+                months_left = (goal.deadline - datetime.utcnow()).days / 30
+
+                if months_needed > months_left:
+                    risk_flags.append(
+                        f"You may not reach '{goal.title}' before its deadline."
+                    )
+                    
+    high_spending_ratio = False
+    if monthly_income and total > 0.7 * monthly_income:
+        high_spending_ratio = True
+        risk_flags.append("Your spending is very high compared to your income.")
 
     # 🔹 Savings (CURRENT WEEK CONTEXT)
     savings = None
@@ -97,7 +138,8 @@ def get_weekly_speedning(db: Session):
         "goal_insights": goal_insights,
         "savings_this_period": savings,
         "can_meet_saving_goal": can_save,
-        "accumulated_savings": accumulated_savings
+        "accumulated_savings": accumulated_savings,
+        "risk_flags": risk_flags
     })
 
     return {
@@ -112,5 +154,6 @@ def get_weekly_speedning(db: Session):
         "can_meet_saving_goal": can_save,
         "savings_insight": savings_insight,
         "accumulated_savings": accumulated_savings,
-        "ai_advice": ai_advice
+        "ai_advice": ai_advice,
+        "risk_flags": risk_flags
     }
