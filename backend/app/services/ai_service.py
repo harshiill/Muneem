@@ -52,6 +52,8 @@ def generate_chat_response(data):
     prompt = f"""
 You are a smart financial assistant.
 
+Conversation Context:
+{data.get('history')}
 User Question:
 {data.get('user_question')}
 
@@ -78,8 +80,8 @@ IMPORTANT:
 - Be realistic and avoid exaggeration
 
 Instructions:
-- Answer the question directly
-- Keep it short and practical
+- Use conversation history for context
+- Answer clearly and shortly
 """
 
     response = client.chat.completions.create(
