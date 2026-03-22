@@ -6,7 +6,7 @@ from app.services.ai_service import generate_ai_advice, generate_chat_response
 from app import models, schemas
 from app.schemas import ChatRequest
 from app.services.memory_store import save_message, get_memory
-
+from app.services.vector_memory import add_to_memory, search_memory
 
 router = APIRouter(prefix="/chat", tags=["chat"])
 
@@ -22,11 +22,12 @@ def chat(query: ChatRequest, db : Session = Depends(get_db)):
     
     # Save user message to memory
     save_message(user_id, user_question, "user")
-    
+    add_to_memory(user_question)
     
     insights = get_weekly_speedning(db)
     
     history = get_memory(user_id)
+    relevant_history = search_memory(user_question)
     
     prompt_data = {
         "user_question": user_question,
@@ -39,12 +40,13 @@ def chat(query: ChatRequest, db : Session = Depends(get_db)):
         "can_meet_saving_goal": insights.get("can_meet_saving_goal") or False,
         "accumulated_savings": insights.get("accumulated_savings") or 0,
         "risk_flags": insights.get("risk_flags", []),
-        "history": history
+        "relevant_history": relevant_history,
     }
     
     response = generate_chat_response(prompt_data)
     
     save_message(user_id, response, "assistant")
+    add_to_memory(response)
     
     return{
      "question": user_question,

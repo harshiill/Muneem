@@ -53,7 +53,7 @@ def generate_chat_response(data):
 You are a smart financial assistant.
 
 Conversation Context:
-{data.get('history')}
+{data.get('relevant_history')}
 User Question:
 {data.get('user_question')}
 
