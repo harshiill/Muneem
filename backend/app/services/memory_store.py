@@ -9,5 +9,5 @@ def save_message(user_id , message , role) :
         "message" : message
     })
 
-def get_messages(user_id) :
+def get_memory(user_id) :
     return chat_memory.get(user_id, [])

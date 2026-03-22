@@ -5,7 +5,7 @@ from app.services.pattern_service import get_weekly_speedning
 from app.services.ai_service import generate_ai_advice, generate_chat_response
 from app import models, schemas
 from app.schemas import ChatRequest
-from app.services.memory_store import save_message, get_messages
+from app.services.memory_store import save_message, get_memory
 
 
 router = APIRouter(prefix="/chat", tags=["chat"])
@@ -26,7 +26,7 @@ def chat(query: ChatRequest, db : Session = Depends(get_db)):
     
     insights = get_weekly_speedning(db)
     
-    history = get_messages(user_id)
+    history = get_memory(user_id)
     
     prompt_data = {
         "user_question": user_question,
