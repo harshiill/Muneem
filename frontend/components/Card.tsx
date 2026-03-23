@@ -15,7 +15,7 @@ export function Card({
 }: CardProps) {
   return (
     <div
-      className={`rounded-lg border border-border bg-card p-6 hover:border-primary transition-colors ${className}`}
+      className={`rounded-lg border border-border/50 bg-card hover:border-primary/50 hover:shadow-lg hover:shadow-primary/10 p-6 transition-all duration-300 ${className}`}
     >
       <div className="flex items-start justify-between">
         <div className="flex-1">

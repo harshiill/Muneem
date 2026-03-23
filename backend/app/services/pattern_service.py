@@ -165,5 +165,7 @@ def get_weekly_speedning(db: Session):
         "savings_insight": savings_insight,
         "accumulated_savings": accumulated_savings,
         "risk_flags": risk_flags,
-        "ai_advice": ai_advice
+        "ai_advice": ai_advice,
+        "monthly_income": monthly_income,
+        "monthly_capacity": monthly_capacity
     }

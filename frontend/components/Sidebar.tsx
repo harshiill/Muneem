@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { MessageCircle, PieChart, PlusCircle, Menu, X, Target, User } from 'lucide-react'
+import { MessageCircle, PieChart, PlusCircle, Menu, X, Target, User, Receipt } from 'lucide-react'
 import { useState } from 'react'
 
 export function Sidebar() {
@@ -19,6 +19,11 @@ export function Sidebar() {
       label: 'Dashboard',
       href: '/dashboard',
       icon: PieChart,
+    },
+    {
+      label: 'Expenses',
+      href: '/expenses',
+      icon: Receipt,
     },
     {
       label: 'Goals',
@@ -44,29 +49,32 @@ export function Sidebar() {
       {/* Mobile Menu Button */}
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="md:hidden fixed top-4 left-4 z-50 p-2 rounded-lg bg-secondary text-foreground hover:bg-secondary/80 transition-colors"
+        className="md:hidden fixed top-4 left-4 z-50 p-2 rounded-lg bg-primary text-primary-foreground hover:shadow-lg hover:shadow-primary/30 transition-all"
       >
         {isOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
       </button>
 
       {/* Sidebar */}
       <aside
-        className={`fixed md:static left-0 top-0 h-screen w-64 border-r border-border bg-secondary transform transition-transform duration-200 ease-in-out ${
+        className={`fixed md:static left-0 top-0 h-screen w-64 border-r border-border/50 bg-gradient-to-b from-secondary via-secondary to-card transform transition-transform duration-200 ease-in-out ${
           isOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'
         } z-40 md:z-auto`}
       >
         {/* Logo */}
-        <div className="p-6 border-b border-border">
+        <div className="p-6 border-b border-border/50 bg-gradient-to-r from-primary/10 to-accent/5">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-full bg-gradient-to-r from-blue-500 to-cyan-500 flex items-center justify-center">
-              <span className="text-lg font-bold text-white">💰</span>
+            <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-primary to-accent shadow-lg shadow-primary/20 flex items-center justify-center">
+              <span className="text-xl font-bold text-white">◆</span>
             </div>
-            <h1 className="text-xl font-bold text-foreground">FinAssist</h1>
+            <div>
+              <h1 className="text-2xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">Muneem</h1>
+              <p className="text-xs text-muted-foreground font-medium tracking-wide">Finance Tracker</p>
+            </div>
           </div>
         </div>
 
         {/* Navigation */}
-        <nav className="p-4 space-y-2">
+        <nav className="p-4 space-y-1">
           {navItems.map((item) => {
             const Icon = item.icon
             const active = isActive(item.href)
@@ -75,10 +83,10 @@ export function Sidebar() {
                 key={item.href}
                 href={item.href}
                 onClick={() => setIsOpen(false)}
-                className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
+                className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-200 ${
                   active
-                    ? 'bg-primary text-primary-foreground'
-                    : 'text-foreground hover:bg-card'
+                    ? 'bg-gradient-to-r from-primary to-primary/80 text-primary-foreground font-semibold shadow-lg shadow-primary/20'
+                    : 'text-muted-foreground hover:text-foreground hover:bg-card/50'
                 }`}
               >
                 <Icon className="w-5 h-5" />
@@ -89,9 +97,12 @@ export function Sidebar() {
         </nav>
 
         {/* Footer */}
-        <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-border bg-secondary">
-          <p className="text-xs text-muted-foreground text-center">
-            AI Financial Assistant v1.0
+        <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-border/50 bg-gradient-to-t from-secondary/50 to-transparent">
+          <p className="text-xs text-muted-foreground text-center font-medium">
+            Muneem • Finance Tracker
+          </p>
+          <p className="text-xs text-muted-foreground text-center mt-1 opacity-70">
+            v1.0
           </p>
         </div>
       </aside>

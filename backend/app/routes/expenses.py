@@ -18,10 +18,22 @@ def add_expense(expense: schemas.ExpenseCreate, db: Session = Depends(get_db)):
     db.refresh(new_expense)
     return new_expense
 
+
 @router.get("/")
 def get_expenses(db: Session = Depends(get_db)):
     return db.query(models.Expense).all()
 
+@router.delete("/{expense_id}")
+def delete_expense(expense_id: int, db: Session = Depends(get_db)):
+    expense = db.query(models.Expense).filter(models.Expense.id == expense_id).first()
+
+    if not expense:
+        return {"error": "Expense not found"}
+
+    db.delete(expense)
+    db.commit()
+
+    return {"message": "Expense deleted"}
 
 @router.get("/insights/weekly")
 def weekly_insights(db : Session = Depends(get_db)):
@@ -32,6 +44,7 @@ def set_profile(profile : schemas.UserProfileCreate, db : Session = Depends(get_
         existing = db.query(models.UserProfile).first()
         
         if existing:
+            existing.monthly_income = profile.monthly_income
             existing.monthly_saving_capacity = profile.monthly_saving_capacity
             db.commit()
             db.refresh(existing)

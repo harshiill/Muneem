@@ -1,31 +1,53 @@
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&family=Inter:wght@300;400;500;600;700&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 @layer base {
   :root {
-    --background: 0 0% 3%;
+    --background: 10 25% 7%;
     --foreground: 0 0% 98%;
-    --card: 0 0% 8%;
+    --card: 10 22% 12%;
     --card-foreground: 0 0% 98%;
-    --primary: 217 91% 60%;
-    --primary-foreground: 225 9% 9%;
-    --secondary: 217 32% 17%;
+    --primary: 160 84% 39%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 10 20% 18%;
     --secondary-foreground: 0 0% 98%;
-    --muted: 217 32% 17%;
+    --muted: 10 20% 18%;
     --muted-foreground: 215 14% 65%;
-    --accent: 217 91% 60%;
-    --accent-foreground: 225 9% 9%;
+    --accent: 38 92% 50%;
+    --accent-foreground: 0 0% 8%;
     --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 98%;
-    --border: 217 32% 17%;
-    --input: 217 32% 17%;
-    --ring: 217 91% 60%;
-    --radius: 0.5rem;
+    --border: 10 20% 18%;
+    --input: 10 20% 18%;
+    --ring: 160 84% 39%;
+    --radius: 0.75rem;
+  }
+
+  html, body {
+    font-family: 'Poppins', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    font-family: 'Poppins', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    font-weight: 700;
+    letter-spacing: -0.5px;
+  }
+
+  p, span, a, button, input, select, textarea {
+    font-family: 'Poppins', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  }
+
+  label {
+    font-family: 'Poppins', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    font-weight: 500;
   }
 
   body {
     @apply bg-background text-foreground;
+    background: linear-gradient(135deg, hsl(10 25% 7%) 0%, hsl(210 30% 9%) 100%);
   }
 }
 

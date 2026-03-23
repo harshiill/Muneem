@@ -8,10 +8,10 @@ export default function AddExpensePage() {
       <div className="max-w-2xl mx-auto">
         {/* Header */}
         <div className="mb-8">
-          <h1 className="text-3xl md:text-4xl font-bold text-foreground mb-2">
+          <h1 className="text-4xl md:text-5xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent mb-2">
             Add Expense
           </h1>
-          <p className="text-muted-foreground">
+          <p className="text-muted-foreground text-lg">
             Track your spending by adding new expenses
           </p>
         </div>

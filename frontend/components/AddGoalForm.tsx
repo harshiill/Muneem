@@ -49,7 +49,7 @@ export function AddGoalForm({ onSuccess }: AddGoalFormProps) {
   return (
     <div className="w-full max-w-lg mx-auto">
       <div className="bg-card border border-border rounded-lg p-6">
-        <h2 className="text-2xl font-bold text-foreground mb-6">Create New Goal</h2>
+        <h2 className="text-2xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent mb-6">Create New Goal</h2>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           {/* Title Input */}
@@ -124,7 +124,7 @@ export function AddGoalForm({ onSuccess }: AddGoalFormProps) {
           <button
             type="submit"
             disabled={isLoading || !title || !targetAmount || !deadline}
-            className="w-full px-4 py-3 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-medium flex items-center justify-center gap-2 mt-6"
+            className="w-full px-4 py-3 rounded-lg bg-gradient-to-r from-primary to-primary/80 text-primary-foreground hover:shadow-lg hover:shadow-primary/30 disabled:opacity-50 disabled:cursor-not-allowed transition-all font-semibold flex items-center justify-center gap-2 mt-6"
           >
             {isLoading ? (
               <>

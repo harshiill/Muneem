@@ -18,31 +18,32 @@ router = APIRouter(prefix="/chat", tags=["chat"])
 def chat(query: ChatRequest, db : Session = Depends(get_db)):
     
     user_question = query.message
+    refresh_context = query.refresh_context  # If True, ignore memory and use only fresh data
     user_id = "default_user" # later from auth
     if not user_question:
         return {"error": "Message is required"}
     
-    # Save user message to memory
-   # save_message(user_id, user_question, "user")
-    #add_to_memory(user_question)
-    #add_memory(user_question)
-    
-    memories = mem_client.search(
-        user_id = user_id,
-        query = user_question,
-    )
-    
+    # Fetch fresh data from database
     insights = get_weekly_speedning(db)
     
-  #  history = get_memory(user_id)
-    #relevant_history = local_search(user_question)
-   # relevant_history_qdrant = qdrant_search(user_question)
-   
-    memory_context = [
-    mem.get("memory", "") 
-    for mem in memories.get("results", []) 
-    if mem.get("memory")
-]
+    # Get memory context - but filter out old factual data
+    if refresh_context:
+        # Force empty memory when user explicitly asks for context refresh
+        memory_context = []
+    else:
+        memories = mem_client.search(
+            user_id = user_id,
+            query = user_question,
+        )
+        
+        memory_context = []
+        for mem in memories.get("results", []):
+            mem_text = mem.get("memory", "")
+            # Skip memory items that contain old financial facts (goals, income, expenses)
+            # This prevents old data from conflicting with fresh data from the database
+            skip_keywords = ['saving goal', 'expense goal', 'total spending', 'monthly income', 'monthly saving', 'goal progress', 'birthday party', 'goa trip']
+            if mem_text and not any(keyword.lower() in mem_text.lower() for keyword in skip_keywords):
+                memory_context.append(mem_text)
     
     prompt_data = {
         "user_question": user_question,

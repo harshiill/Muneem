@@ -80,10 +80,10 @@ export default function ProfilePage() {
       <div className="max-w-4xl mx-auto">
         {/* Header */}
         <div className="mb-8">
-          <h1 className="text-3xl md:text-4xl font-bold text-foreground mb-2">
+          <h1 className="text-4xl md:text-5xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent mb-2">
             Profile Settings
           </h1>
-          <p className="text-muted-foreground">
+          <p className="text-muted-foreground text-lg">
             Manage your financial profile and preferences
           </p>
         </div>
@@ -124,7 +124,7 @@ export default function ProfilePage() {
 
                 <button
                   onClick={() => setIsEditing(true)}
-                  className="w-full mt-6 px-4 py-3 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 transition-colors font-medium"
+                  className="w-full mt-6 px-4 py-3 rounded-lg bg-gradient-to-r from-primary to-primary/80 text-primary-foreground hover:shadow-lg hover:shadow-primary/30 transition-all font-semibold"
                 >
                   Edit Profile
                 </button>
@@ -173,7 +173,7 @@ export default function ProfilePage() {
                   <button
                     type="submit"
                     disabled={isSaving}
-                    className="flex-1 px-4 py-3 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50 transition-colors font-medium flex items-center justify-center gap-2"
+                    className="flex-1 px-4 py-3 rounded-lg bg-gradient-to-r from-primary to-primary/80 text-primary-foreground hover:shadow-lg hover:shadow-primary/30 disabled:opacity-50 transition-all font-semibold flex items-center justify-center gap-2"
                   >
                     {isSaving ? (
                       <>
@@ -188,7 +188,7 @@ export default function ProfilePage() {
                     type="button"
                     onClick={() => setIsEditing(false)}
                     disabled={isSaving}
-                    className="flex-1 px-4 py-3 rounded-lg bg-secondary text-foreground hover:bg-secondary/80 disabled:opacity-50 transition-colors font-medium"
+                    className="flex-1 px-4 py-3 rounded-lg bg-card border border-border text-foreground hover:bg-card/80 disabled:opacity-50 transition-all font-semibold"
                   >
                     Cancel
                   </button>

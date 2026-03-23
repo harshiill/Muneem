@@ -1,31 +1,65 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { goalsApi } from '@/lib/api'
+import { goalsApi, expenseApi } from '@/lib/api'
 import { useGoalsStore, Goal } from '@/lib/store'
 import { GoalCard } from '@/components/GoalCard'
 import { AddGoalForm } from '@/components/AddGoalForm'
 import { Loader2, Target } from 'lucide-react'
 import toast from 'react-hot-toast'
 
+interface GoalInsight {
+  goal: string
+  type: 'saving' | 'expense'
+  target_amount: number
+  months_needed?: number
+  months_left?: number
+  spent?: number
+  remaining?: number
+  progress_percent?: number
+}
+
+interface InsightData {
+  goal_insights: GoalInsight[]
+}
+
 export default function GoalsPage() {
   const { goals, setGoals, removeGoal, isLoading, setLoading } = useGoalsStore()
+  const [goalInsights, setGoalInsights] = useState<GoalInsight[]>([])
   const [showForm, setShowForm] = useState(false)
 
   useEffect(() => {
-    fetchGoals()
+    fetchGoalsAndInsights()
   }, [])
 
-  const fetchGoals = async () => {
+  const fetchGoalsAndInsights = async () => {
     setLoading(true)
     try {
-      const data = await goalsApi.getGoals()
-      setGoals(Array.isArray(data) ? data : [])
+      const [goalsData, insightsData] = await Promise.all([
+        goalsApi.getGoals(),
+        expenseApi.getInsights()
+      ])
+      setGoals(Array.isArray(goalsData) ? goalsData : [])
+      setGoalInsights(insightsData?.goal_insights || [])
     } catch (error) {
-      console.error('Fetch goals error:', error)
+      console.error('Fetch error:', error)
       toast.error('Failed to load goals')
     } finally {
       setLoading(false)
+    }
+  }
+
+  const fetchGoalsAndInsightsRefresh = async () => {
+    try {
+      const [goalsData, insightsData] = await Promise.all([
+        goalsApi.getGoals(),
+        expenseApi.getInsights()
+      ])
+      setGoals(Array.isArray(goalsData) ? goalsData : [])
+      setGoalInsights(insightsData?.goal_insights || [])
+    } catch (error) {
+      console.error('Fetch error:', error)
+      toast.error('Failed to load goals')
     }
   }
 
@@ -36,6 +70,7 @@ export default function GoalsPage() {
       await goalsApi.deleteGoal(id)
       removeGoal(id)
       toast.success('Goal deleted')
+      await fetchGoalsAndInsightsRefresh()
     } catch (error) {
       console.error('Delete goal error:', error)
       toast.error('Failed to delete goal')
@@ -51,16 +86,16 @@ export default function GoalsPage() {
         {/* Header */}
         <div className="mb-8 flex justify-between items-start">
           <div>
-            <h1 className="text-3xl md:text-4xl font-bold text-foreground mb-2">
+            <h1 className="text-4xl md:text-5xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent mb-2">
               Financial Goals
             </h1>
-            <p className="text-muted-foreground">
+            <p className="text-muted-foreground text-lg">
               Create and track your financial goals and budgets
             </p>
           </div>
           <button
             onClick={() => setShowForm(!showForm)}
-            className="px-4 py-2 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 transition-colors font-medium"
+            className="px-4 py-2 rounded-lg bg-gradient-to-r from-primary to-primary/80 text-primary-foreground hover:shadow-lg hover:shadow-primary/30 transition-all font-semibold"
           >
             {showForm ? 'Cancel' : '+ New Goal'}
           </button>
@@ -72,7 +107,7 @@ export default function GoalsPage() {
             <AddGoalForm
               onSuccess={() => {
                 setShowForm(false)
-                fetchGoals()
+                fetchGoalsAndInsightsRefresh()
               }}
             />
           </div>
@@ -109,13 +144,19 @@ export default function GoalsPage() {
               <span className="text-2xl">💰</span> Saving Goals
             </h2>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {savingGoals.map((goal) => (
-                <GoalCard
-                  key={goal.id}
-                  goal={goal}
-                  onDelete={handleDelete}
-                />
-              ))}
+              {savingGoals.map((goal) => {
+                const insight = goalInsights.find(
+                  (g) => g.goal.toLowerCase() === goal.title.toLowerCase()
+                )
+                return (
+                  <GoalCard
+                    key={goal.id}
+                    goal={goal}
+                    insight={insight}
+                    onDelete={handleDelete}
+                  />
+                )
+              })}
             </div>
           </div>
         )}
@@ -127,13 +168,19 @@ export default function GoalsPage() {
               <span className="text-2xl">📊</span> Budget Goals
             </h2>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {expenseGoals.map((goal) => (
-                <GoalCard
-                  key={goal.id}
-                  goal={goal}
-                  onDelete={handleDelete}
-                />
-              ))}
+              {expenseGoals.map((goal) => {
+                const insight = goalInsights.find(
+                  (g) => g.goal.toLowerCase() === goal.title.toLowerCase()
+                )
+                return (
+                  <GoalCard
+                    key={goal.id}
+                    goal={goal}
+                    insight={insight}
+                    onDelete={handleDelete}
+                  />
+                )
+              })}
             </div>
           </div>
         )}

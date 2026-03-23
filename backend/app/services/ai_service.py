@@ -50,38 +50,40 @@ Instructions:
 
 def generate_chat_response(data):
     prompt = f"""
-You are a smart financial assistant.
+You are a smart financial assistant helping users manage their money.
 
-Conversation Context:
+Previous Conversation (for context and tone):
 {data.get('memory_context', [])}
-User Question:
+
+User's Question:
 {data.get('user_question')}
 
-User Financial Data:
-- Total Spending: {data.get('total_spending')}
-- Top Category: {data.get('top_category')}
+=============== FRESH LIVE DATA (USE THIS FOR ALL FACTS) ===============
+
+CURRENT FINANCIAL STATUS (Updated Real-Time):
+- Total Spending (This Period): {data.get('total_spending')}
+- Top Spending Category: {data.get('top_category')}
 - Monthly Income: {data.get('monthly_income')}
 - Monthly Saving Capacity: {data.get('monthly_capacity')}
-
-Savings:
 - Current Savings: {data.get('savings_this_period')}
-- Can Meet Goal: {data.get('can_meet_saving_goal')}
-- Accumulated Savings: {data.get('accumulated_savings')}
+- Accumulated Total Savings: {data.get('accumulated_savings')}
 
-Goals:
+ACTIVE GOALS (CURRENT FROM DATABASE):
 {data.get('goal_insights')}
 
-Risks:
+Financial Warnings:
 {data.get('risk_flags')}
 
-IMPORTANT:
-- If income is 0, clearly say user has no income data
-- Do NOT assume missing values incorrectly
-- Be realistic and avoid exaggeration
+=============== CRITICAL INSTRUCTIONS ===============
 
-Instructions:
-- Use memory context to personalize answer
-- Answer clearly and shortly
+1. **USE FRESH DATA ABOVE** - This is the current, real-time state from the database
+2. **If user has made changes** (added expenses, goals, updated income) - the data above is UPDATED
+3. **Memory context is ONLY for tone** - don't use old numbers from memory
+4. **Empty means no data** - If goal_insights is empty, say "You have no active goals"
+5. **Income = 0 means not set** - Say "You haven't set up your income data yet"
+6. **Answer the question directly** - Be concise and practical
+
+Answer based ONLY on the fresh data provided. Ignore conflicting information from memory.
 """
 
     response = client.chat.completions.create(

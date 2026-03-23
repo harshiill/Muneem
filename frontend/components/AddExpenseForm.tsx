@@ -21,7 +21,7 @@ export function AddExpenseForm() {
   const [title, setTitle] = useState('')
   const [amount, setAmount] = useState('')
   const [category, setCategory] = useState('Food')
-  const [selectedGoal, setSelectedGoal] = useState<string>('')
+  const [selectedGoal, setSelectedGoal] = useState<number | ''>('')
   const [goals, setGoals] = useState<Goal[]>([])
   const [isLoading, setIsLoading] = useState(false)
   const [isLoadingGoals, setIsLoadingGoals] = useState(false)
@@ -54,7 +54,8 @@ export function AddExpenseForm() {
 
     setIsLoading(true)
     try {
-      await expenseApi.addExpense(title, parseFloat(amount), category, selectedGoal || undefined)
+      const goalId = selectedGoal !== '' ? selectedGoal : undefined
+      await expenseApi.addExpense(title, parseFloat(amount), category, goalId)
       toast.success('Expense added successfully!')
       setTitle('')
       setAmount('')
@@ -71,7 +72,7 @@ export function AddExpenseForm() {
   return (
     <div className="w-full max-w-md mx-auto">
       <div className="bg-card border border-border rounded-lg p-6">
-        <h2 className="text-2xl font-bold text-foreground mb-6">Add Expense</h2>
+        <h2 className="text-2xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent mb-6">Add Expense</h2>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           {/* Title Input */}
@@ -136,14 +137,14 @@ export function AddExpenseForm() {
               </div>
             ) : (
               <select
-                value={selectedGoal}
-                onChange={(e) => setSelectedGoal(e.target.value)}
+                value={selectedGoal === '' ? '' : String(selectedGoal)}
+                onChange={(e) => setSelectedGoal(e.target.value === '' ? '' : parseInt(e.target.value, 10))}
                 disabled={isLoading || goals.length === 0}
                 className="w-full px-4 py-2 rounded-lg bg-secondary text-foreground border border-secondary focus:border-primary outline-none transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <option value="">No goal selected</option>
                 {goals.map((goal) => (
-                  <option key={goal.id} value={goal.id}>
+                  <option key={goal.id} value={String(goal.id)}>
                     {goal.title} (${goal.target_amount.toFixed(2)})
                   </option>
                 ))}
@@ -160,7 +161,7 @@ export function AddExpenseForm() {
           <button
             type="submit"
             disabled={isLoading || !title || !amount}
-            className="w-full px-4 py-3 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-medium flex items-center justify-center gap-2 mt-6"
+            className="w-full px-4 py-3 rounded-lg bg-gradient-to-r from-primary to-primary/80 text-primary-foreground hover:shadow-lg hover:shadow-primary/30 disabled:opacity-50 disabled:cursor-not-allowed transition-all font-semibold flex items-center justify-center gap-2 mt-6"
           >
             {isLoading ? (
               <>

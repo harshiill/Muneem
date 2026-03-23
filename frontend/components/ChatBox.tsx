@@ -53,16 +53,16 @@ export function ChatBox() {
       <div className="flex-1 overflow-y-auto p-4 md:p-6">
         {messages.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full text-center">
-            <div className="mb-4">
-              <div className="w-16 h-16 rounded-full bg-gradient-to-r from-blue-500 to-cyan-500 flex items-center justify-center mb-4 mx-auto">
-                <span className="text-2xl">💰</span>
+            <div className="mb-6">
+              <div className="w-20 h-20 rounded-xl bg-gradient-to-br from-primary to-accent shadow-xl shadow-primary/30 flex items-center justify-center mb-4 mx-auto">
+                <span className="text-3xl font-bold">◆</span>
               </div>
             </div>
-            <h2 className="text-2xl md:text-3xl font-bold text-foreground mb-2">
-              AI Financial Assistant
+            <h2 className="text-3xl md:text-4xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent mb-3">
+              Welcome to Muneem
             </h2>
-            <p className="text-muted-foreground max-w-md mb-6">
-              Ask me anything about your finances, budgeting tips, expense analysis, or financial planning.
+            <p className="text-muted-foreground max-w-md mb-8 text-lg">
+              Your AI-powered personal finance assistant. Ask me anything about your finances, budgeting tips, or financial planning.
             </p>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3 max-w-md">
               {[
@@ -76,7 +76,7 @@ export function ChatBox() {
                   onClick={() => {
                     setInput(suggestion)
                   }}
-                  className="px-4 py-2 rounded-lg bg-secondary text-sm text-foreground hover:bg-secondary/80 transition-colors text-left"
+                  className="px-4 py-2 rounded-lg bg-card border border-border/50 text-sm text-muted-foreground hover:text-foreground hover:border-primary hover:bg-card/80 transition-all text-left font-medium"
                 >
                   {suggestion}
                 </button>

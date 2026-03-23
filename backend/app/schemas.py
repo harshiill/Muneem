@@ -20,3 +20,4 @@ class GoalCreate(BaseModel):
     
 class ChatRequest(BaseModel):
     message: str
+    refresh_context: bool = False  # Set to True to ignore memory and use only fresh data

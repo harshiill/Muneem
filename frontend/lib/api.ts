@@ -10,24 +10,35 @@ const apiClient = axios.create({
 })
 
 export const chatApi = {
-  sendMessage: async (message: string) => {
-    const response = await apiClient.post('/chat/', { message })
+  sendMessage: async (message: string, refreshContext: boolean = false) => {
+    const response = await apiClient.post('/chat/', { 
+      message,
+      refresh_context: refreshContext 
+    })
     return response.data.answer
   },
 }
 
 export const expenseApi = {
+  getExpenses: async () => {
+    const response = await apiClient.get('/expenses/')
+    return response.data
+  },
   getInsights: async () => {
     const response = await apiClient.get('/expenses/insights/weekly')
     return response.data
   },
-  addExpense: async (title: string, amount: number, category: string, goalId?: string) => {
+  addExpense: async (title: string, amount: number, category: string, goalId?: number) => {
     const response = await apiClient.post('/expenses/', {
       title,
       amount,
       category,
       goal_id: goalId,
     })
+    return response.data
+  },
+  deleteExpense: async (expenseId: number) => {
+    const response = await apiClient.delete(`/expenses/${expenseId}`)
     return response.data
   },
 }
@@ -48,10 +59,6 @@ export const goalsApi = {
   },
   deleteGoal: async (goalId: string) => {
     await apiClient.delete(`/expenses/goals/${goalId}`)
-  },
-  getGoalInsights: async () => {
-    const response = await apiClient.get('/expenses/goals/insights')
-    return response.data
   },
 }
 
