@@ -53,7 +53,7 @@ def generate_chat_response(data):
 You are a smart financial assistant.
 
 Conversation Context:
-{data.get('relevant_history')}
+{data.get('memory_context', [])}
 User Question:
 {data.get('user_question')}
 
@@ -80,7 +80,7 @@ IMPORTANT:
 - Be realistic and avoid exaggeration
 
 Instructions:
-- Use conversation history for context
+- Use memory context to personalize answer
 - Answer clearly and shortly
 """
 

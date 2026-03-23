@@ -5,8 +5,10 @@ from app.services.pattern_service import get_weekly_speedning
 from app.services.ai_service import generate_ai_advice, generate_chat_response
 from app import models, schemas
 from app.schemas import ChatRequest
-from app.services.memory_store import save_message, get_memory
-from app.services.vector_memory import add_to_memory, search_memory
+# from app.services.memory_store import save_message, get_memory
+# from app.services.vector_memory import add_to_memory, search_memory as local_search
+# from app.services.qdrant_memory import add_memory, search_memory as qdrant_search
+from app.services.memory_service import mem_client
 
 router = APIRouter(prefix="/chat", tags=["chat"])
 
@@ -21,13 +23,26 @@ def chat(query: ChatRequest, db : Session = Depends(get_db)):
         return {"error": "Message is required"}
     
     # Save user message to memory
-    save_message(user_id, user_question, "user")
-    add_to_memory(user_question)
+   # save_message(user_id, user_question, "user")
+    #add_to_memory(user_question)
+    #add_memory(user_question)
+    
+    memories = mem_client.search(
+        user_id = user_id,
+        query = user_question,
+    )
     
     insights = get_weekly_speedning(db)
     
-    history = get_memory(user_id)
-    relevant_history = search_memory(user_question)
+  #  history = get_memory(user_id)
+    #relevant_history = local_search(user_question)
+   # relevant_history_qdrant = qdrant_search(user_question)
+   
+    memory_context = [
+    mem.get("memory", "") 
+    for mem in memories.get("results", []) 
+    if mem.get("memory")
+]
     
     prompt_data = {
         "user_question": user_question,
@@ -40,15 +55,26 @@ def chat(query: ChatRequest, db : Session = Depends(get_db)):
         "can_meet_saving_goal": insights.get("can_meet_saving_goal") or False,
         "accumulated_savings": insights.get("accumulated_savings") or 0,
         "risk_flags": insights.get("risk_flags", []),
-        "relevant_history": relevant_history,
+       # "relevant_history": relevant_history_qdrant,
+        "memory_context": memory_context
     }
     
     response = generate_chat_response(prompt_data)
     
-    save_message(user_id, response, "assistant")
-    add_to_memory(response)
+    #save_message(user_id, response, "assistant")
+   # add_to_memory(response)
+    #add_memory(response)
+    mem_client.add(
+        user_id = user_id,
+        messages = [
+            {"role": "user", "content": user_question},
+            {"role": "assistant", "content": response}
+        ]
+    )
     
     return{
      "question": user_question,
      "answer" : response,
     }
+    
+    

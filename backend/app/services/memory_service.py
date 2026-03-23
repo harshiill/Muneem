@@ -1,0 +1,29 @@
+from mem0 import Memory
+import os
+
+config = {
+    "version": "v1.1",
+    "embedder": {
+        "provider": "openai",
+        "config": {
+            "api_key": os.getenv("OPENAI_API_KEY"),
+            "model": "text-embedding-3-small"
+        }
+    },
+    "llm": {
+        "provider": "openai",
+        "config": {
+            "api_key": os.getenv("OPENAI_API_KEY"),
+            "model": "gpt-4.1-mini"
+        }
+    },
+    "vector_store": {
+        "provider": "qdrant",
+        "config": {
+            "host": "localhost",
+            "port": 6333
+        }
+    }
+}
+
+mem_client = Memory.from_config(config)
