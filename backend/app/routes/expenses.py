@@ -33,7 +33,7 @@ def set_profile(profile : schemas.UserProfileCreate, db : Session = Depends(get_
         
         if existing:
             existing.monthly_saving_capacity = profile.monthly_saving_capacity
-            db.commit
+            db.commit()
             db.refresh(existing)
             return existing
         
