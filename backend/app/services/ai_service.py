@@ -92,3 +92,51 @@ Answer based ONLY on the fresh data provided. Ignore conflicting information fro
     )
 
     return response.choices[0].message.content
+
+
+import json
+from openai import OpenAI
+client = OpenAI()
+
+def detect_action(user_input: str):
+    prompt = f"""
+You are an AI financial assistant.
+
+Decide if the user wants to perform an action.
+
+Actions:
+1. add_expense → when user mentions spending
+2. add_goal → when user wants to save money
+3. update_profile → when user mentions salary/income
+
+Return ONLY JSON:
+
+{{
+  "action": "add_expense" | "add_goal" | "update_profile" | "none",
+  "data": {{...}}
+}}
+
+Examples:
+
+User: I spent 500 on food
+→ {{"action": "add_expense", "data": {{"amount": 500, "category": "food", "title": "food"}}}}
+
+User: I want to save 10000 for trip
+→ {{"action": "add_goal", "data": {{"title": "trip", "target_amount": 10000, "deadline": "2026-12-31", "goal_type": "saving"}}}}
+
+User: My salary is 50000
+→ {{"action": "update_profile", "data": {{"monthly_income": 50000, "monthly_saving_capacity": 10000}}}}
+
+User: Hello
+→ {{"action": "none", "data": {{}}}}
+
+User Input:
+{user_input}
+"""
+
+    response = client.chat.completions.create(
+        model="gpt-4o-mini",
+        messages=[{"role": "user", "content": prompt}]
+    )
+
+    return json.loads(response.choices[0].message.content)

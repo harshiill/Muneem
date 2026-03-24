@@ -9,6 +9,8 @@ from app.schemas import ChatRequest
 # from app.services.vector_memory import add_to_memory, search_memory as local_search
 # from app.services.qdrant_memory import add_memory, search_memory as qdrant_search
 from app.services.memory_service import mem_client
+from app.services.ai_tools import add_expense_tool, add_goal_tool, update_profile_tool
+from app.services.ai_service import detect_action
 
 router = APIRouter(prefix="/chat", tags=["chat"])
 
@@ -59,6 +61,24 @@ def chat(query: ChatRequest, db : Session = Depends(get_db)):
        # "relevant_history": relevant_history_qdrant,
         "memory_context": memory_context
     }
+    
+    
+    action_result = detect_action(user_question)
+
+    action = action_result.get("action")
+    data = action_result.get("data", {})
+
+    if action == "add_expense":
+        msg = add_expense_tool(db, data)
+        return {"answer": msg}
+
+    elif action == "add_goal":
+        msg = add_goal_tool(db, data)
+        return {"answer": msg}
+
+    elif action == "update_profile":
+        msg = update_profile_tool(db, data)
+        return {"answer": msg}
     
     response = generate_chat_response(prompt_data)
     
