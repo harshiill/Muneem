@@ -12,6 +12,12 @@ interface Expense {
   category: string
   goal_id?: number
   created_at?: string
+  splits?: Array<{
+    id: number
+    person_name: string
+    amount_owed: number
+    settled?: string
+  }>
 }
 
 const CATEGORIES = [
@@ -29,6 +35,7 @@ export default function ExpensesPage() {
   const [expenses, setExpenses] = useState<Expense[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [deletingId, setDeletingId] = useState<number | null>(null)
+  const [deletingSplitId, setDeletingSplitId] = useState<number | null>(null)
   const [selectedCategory, setSelectedCategory] = useState<string>('All')
   const [searchTerm, setSearchTerm] = useState('')
 
@@ -63,6 +70,27 @@ export default function ExpensesPage() {
       toast.error('Failed to delete expense')
     } finally {
       setDeletingId(null)
+    }
+  }
+
+  const handleDeleteSplit = async (splitId: number, expenseId: number) => {
+    if (!window.confirm('Are you sure you want to remove this split?')) return
+
+    setDeletingSplitId(splitId)
+    try {
+      await expenseApi.deleteSplit(splitId)
+      // Update local state
+      setExpenses(expenses.map(expense => 
+        expense.id === expenseId
+          ? { ...expense, splits: expense.splits?.filter(s => s.id !== splitId) || [] }
+          : expense
+      ))
+      toast.success('Split removed!')
+    } catch (error) {
+      console.error('Delete split error:', error)
+      toast.error('Failed to remove split')
+    } finally {
+      setDeletingSplitId(null)
     }
   }
 
@@ -204,35 +232,57 @@ export default function ExpensesPage() {
               {filteredExpenses.map((expense) => (
                 <div
                   key={expense.id}
-                  className="grid grid-cols-5 gap-4 p-4 border-b border-border/30 hover:bg-secondary/20 transition-colors items-center"
+                  className="border-b border-border/30 hover:bg-secondary/20 transition-colors"
                 >
-                  <div>
-                    <p className="font-medium text-foreground">{expense.title}</p>
-                  </div>
-                  <div className="text-right">
-                    <p className="font-semibold text-primary">${expense.amount.toFixed(2)}</p>
-                  </div>
-                  <div className="text-center">
-                    <span className="px-3 py-1 rounded-full bg-primary/20 text-primary text-xs font-medium">
-                      {expense.category}
-                    </span>
-                  </div>
-                  <div className="text-center text-sm text-muted-foreground">
-                    {formatDate(expense.created_at)}
-                  </div>
-                  <div className="text-center">
-                    <button
-                      onClick={() => handleDeleteExpense(expense.id)}
-                      disabled={deletingId === expense.id}
-                      className="p-2 rounded-lg hover:bg-destructive/10 text-destructive transition-colors inline-flex disabled:opacity-50 disabled:cursor-not-allowed"
-                      title="Delete expense"
-                    >
-                      {deletingId === expense.id ? (
-                        <Loader2 className="w-4 h-4 animate-spin" />
-                      ) : (
-                        <Trash2 className="w-4 h-4" />
+                  {/* Main row */}
+                  <div className="grid grid-cols-5 gap-4 p-4 items-center">
+                    <div>
+                      <p className="font-medium text-foreground">{expense.title}</p>
+                      {expense.splits && expense.splits.length > 0 && (
+                        <div className="mt-2 space-y-1">
+                          {expense.splits.map((split) => (
+                            <div key={split.id} className="flex items-center justify-between gap-2">
+                              <p className="text-xs text-muted-foreground">
+                                💔 {split.person_name} owes ₹{split.amount_owed.toFixed(0)}
+                              </p>
+                              <button
+                                onClick={() => handleDeleteSplit(split.id || 0, expense.id)}
+                                disabled={deletingSplitId === split.id}
+                                className="px-2 py-1 text-xs bg-red-500/20 text-red-600 dark:text-red-400 hover:bg-red-500/30 rounded disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                                title="Remove split"
+                              >
+                                {deletingSplitId === split.id ? '...' : '✕'}
+                              </button>
+                            </div>
+                          ))}
+                        </div>
                       )}
-                    </button>
+                    </div>
+                    <div className="text-right">
+                      <p className="font-semibold text-primary">₹{expense.amount.toFixed(0)}</p>
+                    </div>
+                    <div className="text-center">
+                      <span className="px-3 py-1 rounded-full bg-primary/20 text-primary text-xs font-medium">
+                        {expense.category}
+                      </span>
+                    </div>
+                    <div className="text-center text-sm text-muted-foreground">
+                      {formatDate(expense.created_at)}
+                    </div>
+                    <div className="text-center">
+                      <button
+                        onClick={() => handleDeleteExpense(expense.id)}
+                        disabled={deletingId === expense.id}
+                        className="p-2 rounded-lg hover:bg-destructive/10 text-destructive transition-colors inline-flex disabled:opacity-50 disabled:cursor-not-allowed"
+                        title="Delete expense"
+                      >
+                        {deletingId === expense.id ? (
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                        ) : (
+                          <Trash2 className="w-4 h-4" />
+                        )}
+                      </button>
+                    </div>
                   </div>
                 </div>
               ))}
@@ -246,14 +296,33 @@ export default function ExpensesPage() {
                   className="p-4 rounded-lg bg-secondary/30 border border-border/30"
                 >
                   <div className="flex justify-between items-start mb-3">
-                    <div>
+                    <div className="flex-1">
                       <p className="font-semibold text-foreground">{expense.title}</p>
                       <p className="text-xs text-muted-foreground mt-1">
                         {formatDate(expense.created_at)}
                       </p>
+                      {expense.splits && expense.splits.length > 0 && (
+                        <div className="mt-2 space-y-1">
+                          {expense.splits.map((split) => (
+                            <div key={split.id} className="flex items-center justify-between gap-2">
+                              <p className="text-xs text-muted-foreground">
+                                💔 {split.person_name}: ₹{split.amount_owed.toFixed(0)}
+                              </p>
+                              <button
+                                onClick={() => handleDeleteSplit(split.id || 0, expense.id)}
+                                disabled={deletingSplitId === split.id}
+                                className="px-2 py-1 text-xs bg-red-500/20 text-red-600 dark:text-red-400 hover:bg-red-500/30 rounded disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                                title="Remove split"
+                              >
+                                {deletingSplitId === split.id ? '...' : '✕'}
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      )}
                     </div>
-                    <p className="font-bold text-primary text-lg">
-                      ${expense.amount.toFixed(2)}
+                    <p className="font-bold text-primary text-lg ml-4">
+                      ₹{expense.amount.toFixed(0)}
                     </p>
                   </div>
                   <div className="flex justify-between items-center">

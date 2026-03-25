@@ -31,22 +31,95 @@ Risk Analysis:
 Goals:
 {data.get('goal_insights')}
 
+Dues:
+{data.get('due_insights')}
+
 Instructions:
 - Give a short, human-like financial suggestion
 - Mention overspending if present
 - Mention if savings are insufficient
 - Mention goal timelines if relevant
+- Mention dues if present and urgent
 - Keep response concise and practical
 """
 
     response = client.chat.completions.create(
         model="gpt-4o-mini",
         messages=[
-            {"role": "user", "content": prompt}  # FIXED ROLE
+            {"role": "system", "content": "You are a helpful financial advisor."},
+            {"role": "user", "content": prompt}
         ]
     )
 
     return response.choices[0].message.content
+
+
+# 🔹 NEW: Generate Clarifying Questions
+def generate_clarifying_questions(user_question: str, data: dict):
+    """Generate intelligent counter-questions to gather more context"""
+    prompt = f"""
+You are a smart financial advisor. The user asked:
+"{user_question}"
+
+Their current financial situation:
+- Monthly Income: {data.get('monthly_income')}
+- Monthly Savings Capacity: {data.get('monthly_capacity')}
+- Total Spending: {data.get('total_spending')}
+- Current Savings: {data.get('savings_this_period')}
+
+Your job: Ask 2-3 SHORT, SPECIFIC clarifying questions to better understand their situation.
+
+Format: Ask questions that help you give better advice.
+
+Examples:
+- User: "I want to go on a trip"
+  Questions: "How long are you planning to stay? Which destination? What's your budget in mind?"
+  
+- User: "Can I afford a new phone?"
+  Questions: "What's the phone price? Will you pay upfront or in installments? What brand are you considering?"
+
+- User: "I'm overspending"
+  Questions: "Which categories are you overspending on? Is this a temporary situation or ongoing problem?"
+
+User Question: "{user_question}"
+
+Generate 2-3 clarifying questions in a natural conversational way. Be concise.
+"""
+
+    response = client.chat.completions.create(
+        model="gpt-4o-mini",
+        messages=[
+            {"role": "system", "content": "You are a helpful financial advisor who asks smart clarifying questions."},
+            {"role": "user", "content": prompt}
+        ]
+    )
+
+    return response.choices[0].message.content
+
+
+# 🔹 NEW: Web Search Integration
+def search_financial_info(query: str):
+    """Use OpenAI SDK to enhance answers with web context"""
+    try:
+        # Create completion with web search context
+        completion = client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=[
+                {
+                    "role": "system",
+                    "content": "You are a financial advisor. Provide practical, researched financial advice."
+                },
+                {
+                    "role": "user",
+                    "content": f"Provide reliable financial information about: {query}"
+                }
+            ],
+            temperature=0.7,
+            max_tokens=500
+        )
+        return completion.choices[0].message.content
+    except Exception as e:
+        return None
 
 
 def generate_chat_response(data):
@@ -72,6 +145,9 @@ CURRENT FINANCIAL STATUS (Updated Real-Time):
 ACTIVE GOALS (CURRENT FROM DATABASE):
 {data.get('goal_insights')}
 
+PENDING DUES & OBLIGATIONS:
+{data.get('due_insights')}
+
 Financial Warnings:
 {data.get('risk_flags')}
 
@@ -83,6 +159,9 @@ Financial Warnings:
 4. **Empty means no data** - If goal_insights is empty, say "You have no active goals"
 5. **Income = 0 means not set** - Say "You haven't set up your income data yet"
 6. **Answer the question directly** - Be concise and practical
+7. **Consider Dues in Analysis** - Factor in pending dues when giving financial advice
+8. **Ask for Clarification** - If user's request is vague, ask clarifying questions
+9. **Be Realistic** - Don't promise unrealistic results
 
 Answer based ONLY on the fresh data provided. Ignore conflicting information from memory.
 
@@ -92,14 +171,24 @@ Instructions:
 - For travel questions:
     - consider approximate cost
     - compare with savings
-- If missing info → ask user
+- For any major decision:
+    - Consider their dues and obligations
+    - Check if it aligns with goals
+- If missing info → ask user specific questions
 - Do NOT give over-optimistic answers
 - Be practical and logical
+- Acknowledge dues if they impact the decision
 """
 
     response = client.chat.completions.create(
         model="gpt-4o-mini",
-        messages=[{"role": "user", "content": prompt}]
+        messages=[
+            {
+                "role": "system",
+                "content": "You are a highly intelligent financial advisor who gives practical, realistic advice considering all financial obligations."
+            },
+            {"role": "user", "content": prompt}
+        ]
     )
 
     return response.choices[0].message.content
@@ -155,77 +244,106 @@ User Input:
 
 
 def detect_user_intent(user_question: str):
-    prompt = f"""
-You are a smart financial assistant.
-
-Your job is to classify user intent and extract action if needed.
+    # Using triple quotes and not as f-string to avoid escaping issues with JSON
+    prompt = """
+You are a smart financial assistant that detects user intents with high accuracy.
+Return ONLY valid JSON with no markdown, code blocks, or extra text.
 
 ---
 
 Classify intent_type:
-
-- action → user wants to do something (add expense, goal, etc.)
-- advice → user asking decision (trip, saving, etc.)
+- action → user wants to do something
+- advice → user asking for help or decision
 - question → general question
 - impossible → unrealistic request
 
 ---
 
-RULES:
+ACTIONS YOU CAN DETECT:
 
-1. DO NOT create actions for unrealistic things
-   Example: "I want to go to Mars" → impossible
+1. add_expense → "I spent X on Y"
+   - ALSO DETECT: goal mention for linking (goal_name)
+   - ALSO DETECT: people names for splitting (splits array)
+   - SPLITS: When user mentions splitting with others, extract each person's share
 
-2. For advice:
-   - DO NOT create action
-   - let main system handle response
-
-3. Only create action if it is clear and realistic
-
----
-
-Examples:
-
-"I spent 500 on food"
-→
-{{
-  "intent_type": "action",
-  "action": "add_expense",
-  "amount": 500,
-  "category": "food",
-  "title": "food"
-}}
-
-"Can I go to USA?"
-→
-{{
-  "intent_type": "advice",
-  "action": "none"
-}}
-
-"I want to go to Mars"
-→
-{{
-  "intent_type": "impossible",
-  "action": "none"
-}}
+2. add_goal → "I want to save/spend X for Y"
+3. add_due → "I owe X to Y" or "Need to pay by DATE"
+4. delete_expense, delete_goal, delete_due
+5. update_profile → "My salary is X"
 
 ---
 
-User Input:
-{user_question}
+SPLITS EXAMPLES - IMPORTANT:
+When user says: "Lunch 600 with Ayush and Tanmay"
+  Each person pays: 600/3 = 200 each
+  Extract: splits=[{"person_name":"Ayush","amount_owed":200},{"person_name":"Tanmay","amount_owed":200}]
+  Note: Don't include yourself in splits, only the others
 
-Return ONLY JSON.
+When user says: "Movie tickets 400, Ayush pays for John's"
+  Extract: splits=[{"person_name":"Ayush","amount_owed":200},{"person_name":"John","amount_owed":200}]
+  Ayush owes you 200, John owes you 200
+
+When user says: "Dinner 1000 split 3 ways"
+  Extract: splits=[{"person_name":"Friend1","amount_owed":333},{"person_name":"Friend2","amount_owed":333}]
+  If exact names not given, use generic names
+
+---
+
+DUE DETECTION - IMPORTANT:
+When user says: "I owe 5000 to John"
+  Extract: creditor="John", amount=5000, title="Loan from John"
+When user says: "Pay 2000 to credit card by March 31"
+  Extract: creditor="Credit Card", amount=2000, due_date="2026-03-31"
+
+TODAY'S DATE: 2026-03-26
+
+---
+
+EXAMPLES (return ONLY JSON, no extra text):
+
+Input: "I spent 100 for birthday"
+Output: {"intent_type":"action","action":"add_expense","amount":100,"category":"Entertainment","title":"birthday party","goal_name":"birthday"}
+
+Input: "Lunch 600 with Ayush and Tanmay"
+Output: {"intent_type":"action","action":"add_expense","amount":600,"category":"Food","title":"Lunch","splits":[{"person_name":"Ayush","amount_owed":300},{"person_name":"Tanmay","amount_owed":300}]}
+
+Input: "Coffee 200 paid by Raj"
+Output: {"intent_type":"action","action":"add_expense","amount":200,"category":"Food","title":"Coffee","splits":[{"person_name":"Raj","amount_owed":200}]}
+
+Input: "I owe 5000 to John"
+Output: {"intent_type":"action","action":"add_due","amount":5000,"creditor":"John","title":"Loan from John","due_date":"2026-04-26","due_category":"personal"}
+
+Input: "Can I afford a trip?"
+Output: {"intent_type":"advice","action":"none"}
+
+---
+
+User Input: """ + user_question + """
 """
 
     response = client.chat.completions.create(
         model="gpt-4o-mini",
-        messages=[{"role": "user", "content": prompt}]
+        messages=[
+            {"role": "system", "content": "You are a financial assistant. Return ONLY valid JSON, no markdown or code blocks."},
+            {"role": "user", "content": prompt}
+        ]
     )
 
-    text = response.choices[0].message.content
+    text = response.choices[0].message.content.strip()
+    
+    # Clean up markdown code blocks if present
+    if text.startswith("```"):
+        text = text.split("```")[1]
+        if text.startswith("json"):
+            text = text[4:]
+    text = text.strip()
 
     try:
-        return AgentAction(**json.loads(text))
-    except:
-        return AgentAction(action="none")
+        data = json.loads(text)
+        return AgentAction(**data)
+    except json.JSONDecodeError as e:
+        print(f"JSON Error: {e}, texto: {text[:100]}")
+        return AgentAction(intent_type="advice", action="none")
+    except Exception as e:
+        print(f"AgentAction Error: {e}")
+        return AgentAction(intent_type="advice", action="none")

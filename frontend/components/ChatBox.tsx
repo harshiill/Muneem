@@ -11,6 +11,8 @@ export function ChatBox() {
   const [input, setInput] = useState('')
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const { messages, isLoading, addMessage, setLoading } = useChatStore()
+  const [streamingText, setStreamingText] = useState('')
+  const completedTextRef = useRef('')
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -18,7 +20,16 @@ export function ChatBox() {
 
   useEffect(() => {
     scrollToBottom()
-  }, [messages])
+  }, [messages, streamingText])
+
+  // When streaming completes, add the final message to store
+  useEffect(() => {
+    if (!isLoading && streamingText && completedTextRef.current) {
+      addMessage(completedTextRef.current, 'ai')
+      setStreamingText('')
+      completedTextRef.current = ''
+    }
+  }, [isLoading, addMessage])
 
   const handleSend = async () => {
     if (!input.trim() || isLoading) return
@@ -27,10 +38,15 @@ export function ChatBox() {
     setInput('')
     addMessage(userMessage, 'user')
     setLoading(true)
+    setStreamingText('')
+    completedTextRef.current = ''
 
     try {
-      const response = await chatApi.sendMessage(userMessage)
-      addMessage(response, 'ai')
+      // Use streaming API for better UX
+      await chatApi.sendMessageStream(userMessage, (chunk) => {
+        completedTextRef.current += chunk
+        setStreamingText((prev) => prev + chunk)
+      })
     } catch (error) {
       console.error('Chat error:', error)
       toast.error('Failed to get response. Please try again.')
@@ -88,7 +104,17 @@ export function ChatBox() {
             {messages.map((message) => (
               <MessageBubble key={message.id} message={message} />
             ))}
-            {isLoading && (
+            {isLoading && streamingText && (
+              <MessageBubble 
+                message={{ 
+                  id: 'streaming', 
+                  content: streamingText, 
+                  sender: 'ai',
+                  timestamp: new Date()
+                }} 
+              />
+            )}
+            {isLoading && !streamingText && (
               <div className="flex gap-3 mb-4">
                 <div className="flex-shrink-0 w-8 h-8 rounded-full bg-gradient-to-r from-blue-500 to-cyan-500 flex items-center justify-center">
                   <Loader2 className="w-4 h-4 text-white animate-spin" />
@@ -117,12 +143,12 @@ export function ChatBox() {
             onKeyPress={handleKeyPress}
             placeholder="Ask me anything about your finances..."
             disabled={isLoading}
-            className="flex-1 px-4 py-3 rounded-lg bg-secondary text-foreground placeholder-muted-foreground border border-secondary focus:border-primary outline-none transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            className="flex-1 px-4 py-3 rounded-lg bg-secondary text-foreground placeholder-muted-foreground border border-border focus:border-primary focus:ring-2 focus:ring-primary/10 outline-none transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           />
           <button
             onClick={handleSend}
             disabled={isLoading || !input.trim()}
-            className="px-4 py-3 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-2"
+            className="px-6 py-3 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-2 font-medium shadow-md"
           >
             {isLoading ? (
               <Loader2 className="w-5 h-5 animate-spin" />

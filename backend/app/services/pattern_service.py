@@ -1,5 +1,5 @@
 from sqlalchemy.orm import Session
-from app.models import Expense, UserProfile, Goal
+from app.models import Expense, UserProfile, Goal, Due
 from datetime import datetime, timedelta
 from collections import defaultdict
 from app.services.ai_service import generate_ai_advice
@@ -25,7 +25,52 @@ def calculate_monthly_savings(db: Session, monthly_income):
     return monthly_savings
 
 
-# 🔹 Main Function
+# 🔹 Helper: Calculate Total Dues
+def calculate_total_dues(db: Session):
+    pending_dues = db.query(Due).filter(Due.status == "pending").all()
+    total_dues = sum(due.amount for due in pending_dues)
+    
+    overdue_dues = db.query(Due).filter(Due.status == "overdue").all()
+    overdue_amount = sum(due.amount for due in overdue_dues)
+    
+    return {
+        "total_pending": total_dues,
+        "total_overdue": overdue_amount,
+        "all_pending": pending_dues,
+        "all_overdue": overdue_dues
+    }
+
+
+# 🔹 Helper: Format Due Insights
+def format_due_insights(dues_data):
+    insights = []
+    
+    if dues_data["all_overdue"]:
+        for due in dues_data["all_overdue"]:
+            insights.append({
+                "due": due.title,
+                "status": "overdue",
+                "amount": due.amount,
+                "creditor": due.creditor,
+                "category": due.category
+            })
+    
+    if dues_data["all_pending"]:
+        for due in dues_data["all_pending"]:
+            days_left = (due.due_date - datetime.utcnow()).days
+            insights.append({
+                "due": due.title,
+                "status": "pending",
+                "amount": due.amount,
+                "creditor": due.creditor,
+                "category": due.category,
+                "days_until_due": days_left
+            })
+    
+    return insights
+
+
+# 🔹 Main Function (UPDATED)
 def get_weekly_speedning(db: Session):
     one_week_ago = datetime.utcnow() - timedelta(days=7)
 
@@ -82,7 +127,17 @@ def get_weekly_speedning(db: Session):
     if monthly_income and total > 0.7 * monthly_income:
         risk_flags.append("Your spending is very high compared to your income.")
 
-    # 🔹 Goals
+    # � Dues Risk Check
+    dues_data = calculate_total_dues(db)
+    if dues_data["total_overdue"] > 0:
+        risk_flags.append(f"You have ₹{dues_data['total_overdue']} in overdue payments!")
+    
+    if dues_data["total_pending"] > 0 and monthly_income:
+        pending_ratio = dues_data["total_pending"] / monthly_income
+        if pending_ratio > 0.5:
+            risk_flags.append(f"You have significant outstanding dues (₹{dues_data['total_pending']}). Please prioritize payment.")
+
+    # �🔹 Goals
     goals = db.query(Goal).all()
     goal_insights = []
 
@@ -139,6 +194,9 @@ def get_weekly_speedning(db: Session):
     monthly_savings = calculate_monthly_savings(db, monthly_income)
     accumulated_savings = sum(monthly_savings.values()) if monthly_savings else 0
 
+    # 🔹 Get Dues Information
+    due_insights = format_due_insights(dues_data)
+
     # 🔹 AI
     ai_advice = generate_ai_advice({
         "total_spending": total,
@@ -149,7 +207,8 @@ def get_weekly_speedning(db: Session):
         "savings_this_period": savings,
         "can_meet_saving_goal": can_save,
         "accumulated_savings": accumulated_savings,
-        "risk_flags": risk_flags
+        "risk_flags": risk_flags,
+        "due_insights": due_insights
     })
 
     return {
@@ -159,6 +218,7 @@ def get_weekly_speedning(db: Session):
         "top_category": top_category,
         "insight": insight,
         "goal_insights": goal_insights,
+        "due_insights": due_insights,
         "monthly_savings": monthly_savings,
         "savings_this_period": savings,
         "can_meet_saving_goal": can_save,
@@ -167,5 +227,7 @@ def get_weekly_speedning(db: Session):
         "risk_flags": risk_flags,
         "ai_advice": ai_advice,
         "monthly_income": monthly_income,
-        "monthly_capacity": monthly_capacity
+        "monthly_capacity": monthly_capacity,
+        "total_pending_dues": dues_data["total_pending"],
+        "total_overdue": dues_data["total_overdue"]
     }

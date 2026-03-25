@@ -1,28 +1,29 @@
 from fastapi import APIRouter, Depends
+from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 from app.database import get_db
 from app.services.pattern_service import get_weekly_speedning
-from app.services.ai_service import generate_ai_advice, generate_chat_response
+from app.services.ai_service import generate_ai_advice, generate_chat_response, generate_clarifying_questions
 from app import models, schemas
 from app.schemas import ChatRequest
-# from app.services.memory_store import save_message, get_memory
-# from app.services.vector_memory import add_to_memory, search_memory as local_search
-# from app.services.qdrant_memory import add_memory, search_memory as qdrant_search
 from app.services.memory_service import mem_client
-from app.services.ai_tools import add_expense_tool, add_goal_tool, update_profile_tool
-#from app.services.ai_service import detect_action
-from app.services.ai_service import detect_user_intent
+from app.services.ai_tools import (
+    add_expense_tool, add_goal_tool, update_profile_tool,
+    add_due_tool, delete_expense_tool, delete_goal_tool, delete_due_tool
+)
+from app.services.ai_service import detect_user_intent, client
+import json
 
 router = APIRouter(prefix="/chat", tags=["chat"])
 
 
-        
 @router.post("/")
-def chat(query: ChatRequest, db : Session = Depends(get_db)):
+def chat(query: ChatRequest, db: Session = Depends(get_db)):
     
     user_question = query.message
-    refresh_context = query.refresh_context  # If True, ignore memory and use only fresh data
-    user_id = "default_user" # later from auth
+    refresh_context = query.refresh_context
+    user_id = "default_user"  # later from auth
+    
     if not user_question:
         return {"error": "Message is required"}
     
@@ -31,23 +32,22 @@ def chat(query: ChatRequest, db : Session = Depends(get_db)):
     
     # Get memory context - but filter out old factual data
     if refresh_context:
-        # Force empty memory when user explicitly asks for context refresh
         memory_context = []
     else:
         memories = mem_client.search(
-            user_id = user_id,
-            query = user_question,
+            user_id=user_id,
+            query=user_question,
         )
         
         memory_context = []
         for mem in memories.get("results", []):
             mem_text = mem.get("memory", "")
-            # Skip memory items that contain old financial facts (goals, income, expenses)
-            # This prevents old data from conflicting with fresh data from the database
-            skip_keywords = ['saving goal', 'expense goal', 'total spending', 'monthly income', 'monthly saving', 'goal progress', 'birthday party', 'goa trip']
+            skip_keywords = ['saving goal', 'expense goal', 'total spending', 'monthly income', 
+                           'monthly saving', 'goal progress', 'birthday party', 'goa trip']
             if mem_text and not any(keyword.lower() in mem_text.lower() for keyword in skip_keywords):
                 memory_context.append(mem_text)
     
+    # Prepare data for AI
     prompt_data = {
         "user_question": user_question,
         "total_spending": insights.get("total_spending", 0),
@@ -55,75 +55,321 @@ def chat(query: ChatRequest, db : Session = Depends(get_db)):
         "monthly_capacity": insights.get("monthly_capacity") or 0,
         "monthly_income": insights.get("monthly_income") or 0,
         "goal_insights": insights.get("goal_insights", []),
+        "due_insights": insights.get("due_insights", []),
         "savings_this_period": insights.get("savings_this_period") or 0,
         "can_meet_saving_goal": insights.get("can_meet_saving_goal") or False,
         "accumulated_savings": insights.get("accumulated_savings") or 0,
         "risk_flags": insights.get("risk_flags", []),
-       # "relevant_history": relevant_history_qdrant,
-        "memory_context": memory_context
+        "memory_context": memory_context,
+        "total_pending_dues": insights.get("total_pending_dues", 0),
+        "total_overdue": insights.get("total_overdue", 0)
     }
     
-    
+    # Detect user intent
     result = detect_user_intent(user_question)
 
+    # Handle impossible requests
     if result.intent_type == "impossible":
-        return {
-            "answer": "That doesn't seem realistic right now. Let's focus on achievable goals 😊"
-        }
+        response = "That doesn't seem realistic right now. Let's focus on achievable goals 😊"
+        mem_client.add(
+            user_id=user_id,
+            messages=[
+                {"role": "user", "content": user_question},
+                {"role": "assistant", "content": response}
+            ]
+        )
+        return {"answer": response}
 
-    if result.intent_type == "advice":
-        return {
-            "answer": generate_chat_response(prompt_data)
-        }
-
-    if result.intent_type == "action":
-
-        if result.action == "add_expense":
-            return {
-                "answer": add_expense_tool(
-                    db,
-                    result.title,
-                    result.amount,
-                    result.category
-                )
-            }
-
-        if result.action == "add_goal":
-            return {
-                "answer": add_goal_tool(
-                    db,
-                    result.title,
-                    result.target_amount,
-                    result.deadline,
-                    result.goal_type
-                )
-            }
-
-        if result.action == "update_profile":
-            return {
-                "answer": update_profile_tool(
-                    db,
-                    result.monthly_income,
-                    result.monthly_saving_capacity
-                )
-            }
+    # Handle advice/questions - generate smart clarifying questions if needed
+    if result.intent_type == "advice" or result.intent_type == "question":
+        response = generate_chat_response(prompt_data)
         
-    response = generate_chat_response(prompt_data)
+        # Optionally add clarifying questions for vague requests
+        if len(user_question.split()) < 5 or "?" in user_question:
+            clarifying_qs = generate_clarifying_questions(user_question, prompt_data)
+            response = f"{response}\n\n**To help you better:**\n{clarifying_qs}"
+        
+        mem_client.add(
+            user_id=user_id,
+            messages=[
+                {"role": "user", "content": user_question},
+                {"role": "assistant", "content": response}
+            ]
+        )
+        return {"answer": response}
+
+    # Handle action requests
+    if result.intent_type == "action":
+        action_result = None
+        
+        # ADD EXPENSE
+        if result.action == "add_expense":
+            try:
+                # Validate expense data
+                if not result.amount:
+                    action_result = "Please specify the amount you spent!"
+                elif not result.title:
+                    action_result = "Please describe what you spent on!"
+                else:
+                    # Add the expense first
+                    action_result = add_expense_tool(
+                        db,
+                        result.title or "Expense",
+                        result.amount,
+                        result.category or "other",
+                        None  # Don't pass goal_id initially
+                    )
+                    
+                    # Get the newly added expense
+                    expense = db.query(models.Expense).order_by(models.Expense.id.desc()).first()
+                    
+                    # Try to add splits if any
+                    if expense and result.splits:
+                        for split in result.splits:
+                            split_record = models.Split(
+                                expense_id=expense.id,
+                                person_name=split.person_name,
+                                amount_owed=split.amount_owed,
+                                settled="pending"
+                            )
+                            db.add(split_record)
+                        db.commit()
+                        action_result += f"\n\n💰 **Expense Split:**"
+                        for split in result.splits:
+                            action_result += f"\n  • {split.person_name}: ₹{split.amount_owed:.0f}"
+                    
+                    # Check if goal was mentioned and try to link
+                    if result.goal_name and expense:
+                        matching_goals = db.query(models.Goal).filter(
+                            models.Goal.title.ilike(f"%{result.goal_name}%")
+                        ).all()
+                        
+                        if matching_goals:
+                            if len(matching_goals) == 1:
+                                # Auto-link to single matching goal
+                                expense.goal_id = matching_goals[0].id
+                                db.commit()
+                                action_result += f"\n\n✅ Expense linked to goal: **{matching_goals[0].title}**"
+                            else:
+                                # Multiple matches - ask user to select
+                                goal_list = "\n".join([f"  • {g.title} (₹{g.target_amount})" for g in matching_goals])
+                                action_result += f"\n\n🎯 **Which goal is this for?**\n{goal_list}\n\nLet me know the goal name!"
+                        else:
+                            # No matching goal found - show available goals
+                            all_goals = db.query(models.Goal).all()
+                            if all_goals:
+                                goal_list = "\n".join([f"  • {g.title}" for g in all_goals])
+                                action_result += f"\n\n📌 No goal matching '{result.goal_name}' found. Your goals:\n{goal_list}"
+            except Exception as e:
+                print(f"Error adding expense: {e}")
+                action_result = f"Error adding expense: {str(e)[:100]}"
+        
+        # ADD GOAL
+        elif result.action == "add_goal":
+            action_result = add_goal_tool(
+                db,
+                result.title or "Goal",
+                result.target_amount,
+                result.deadline or "2026-12-31",
+                result.goal_type or "saving"
+            )
+        
+        # ADD DUE (NEW)
+        elif result.action == "add_due":
+            try:
+                # Validate amount is provided
+                if not result.amount:
+                    action_result = "Please specify how much you owe!"
+                elif not result.creditor:
+                    action_result = "Please specify who you owe this to!"
+                else:
+                    action_result = add_due_tool(
+                        db,
+                        result.title or f"Due to {result.creditor}",
+                        result.amount,
+                        result.creditor,
+                        result.due_date or "2026-12-31",
+                        result.due_category or "personal"
+                    )
+            except Exception as e:
+                print(f"Error adding due: {e}")
+                action_result = f"Error recording due: {str(e)[:100]}"
+        
+        # DELETE EXPENSE (NEW)
+        elif result.action == "delete_expense":
+            action_result = delete_expense_tool(db, result.expense_id or 0)
+        
+        # DELETE GOAL (NEW)
+        elif result.action == "delete_goal":
+            action_result = delete_goal_tool(db, result.goal_id or 0)
+        
+        # DELETE DUE (NEW)
+        elif result.action == "delete_due":
+            action_result = delete_due_tool(db, result.due_id or 0)
+        
+        # UPDATE PROFILE
+        elif result.action == "update_profile":
+            action_result = update_profile_tool(
+                db,
+                result.monthly_income or 0,
+                result.monthly_saving_capacity or 0
+            )
+        
+        # ADD EXPENSE TO GOAL (NEW)
+        elif result.action == "add_expense_to_goal":
+            # Link expense to goal
+            if result.expense_id and result.goal_id:
+                expense = db.query(models.Expense).filter(models.Expense.id == result.expense_id).first()
+                if expense:
+                    expense.goal_id = result.goal_id
+                    db.commit()
+                    action_result = f"Expense linked to goal successfully"
+                else:
+                    action_result = "Expense not found"
+            else:
+                action_result = "Please specify expense and goal"
+        
+        if action_result:
+            mem_client.add(
+                user_id=user_id,
+                messages=[
+                    {"role": "user", "content": user_question},
+                    {"role": "assistant", "content": action_result}
+                ]
+            )
+            return {"answer": action_result}
     
-    #save_message(user_id, response, "assistant")
-   # add_to_memory(response)
-    #add_memory(response)
+    # Default: generate chat response
+    response = generate_chat_response(prompt_data)
     mem_client.add(
-        user_id = user_id,
-        messages = [
+        user_id=user_id,
+        messages=[
             {"role": "user", "content": user_question},
             {"role": "assistant", "content": response}
         ]
     )
     
-    return{
-     "question": user_question,
-     "answer" : response,
+    return {
+        "question": user_question,
+        "answer": response,
     }
+
+
+# 🔹 NEW: Streaming chat endpoint for real-time responses
+@router.post("/stream")
+async def chat_stream(query: ChatRequest, db: Session = Depends(get_db)):
+    """Stream chat responses in real-time using Server-Sent Events"""
     
+    user_question = query.message
+    refresh_context = query.refresh_context
+    user_id = "default_user"
     
+    if not user_question:
+        return {"error": "Message is required"}
+    
+    # Detect intent FIRST with timeout
+    try:
+        result = detect_user_intent(user_question)
+    except Exception as e:
+        print(f"Intent detection error: {e}")
+        result = None
+    
+    # Fetch data only if needed (for non-action intents)
+    insights = None
+    memory_context = []
+    if result and result.intent_type in ["advice", "question"]:
+        try:
+            insights = get_weekly_speedning(db)
+            if not refresh_context:
+                try:
+                    memories = mem_client.search(user_id=user_id, query=user_question)
+                    for mem in memories.get("results", []):
+                        mem_text = mem.get("memory", "")
+                        skip_keywords = ['saving goal', 'expense goal', 'total spending', 'monthly income']
+                        if mem_text and not any(keyword.lower() in mem_text.lower() for keyword in skip_keywords):
+                            memory_context.append(mem_text)
+                except Exception as e:
+                    print(f"Memory fetch error: {e}")
+        except Exception as e:
+            print(f"Insights fetch error: {e}")
+            insights = {}
+    
+    async def generate():
+        """Generate streaming response as Server-Sent Events"""
+        try:
+            if not result:
+                yield f"data: {json.dumps({'text': 'Sorry, I encountered an error processing your request.'})}\n\n"
+                return
+                
+            if result.intent_type == "action" and result.action in ["add_expense", "add_due", "add_goal"]:
+                # Quick action response (no streaming needed)
+                action_result = "Action recorded successfully"
+                if result.action == "add_expense" and result.amount:
+                    action_result = add_expense_tool(
+                        db,
+                        result.title or "Expense",
+                        result.amount,
+                        result.category or "other",
+                        result.goal_id
+                    )
+                elif result.action == "add_due" and result.amount and result.creditor:
+                    action_result = add_due_tool(
+                        db,
+                        result.title or f"Due to {result.creditor}",
+                        result.amount,
+                        result.creditor,
+                        result.due_date or "2026-12-31",
+                        result.due_category or "personal"
+                    )
+                
+                yield f"data: {json.dumps({'text': action_result})}\n\n"
+            
+            elif result.intent_type == "impossible":
+                response = "That doesn't seem realistic right now. Let's focus on achievable goals 😊"
+                yield f"data: {json.dumps({'text': response})}\n\n"
+            
+            else:
+                # Stream the advice/chat response with timeout protection
+                try:
+                    stream_response = client.chat.completions.create(
+                        model="gpt-4o-mini",
+                        messages=[
+                            {
+                                "role": "system",
+                                "content": "You are a helpful financial advisor. Answer concisely in 100-200 words."
+                            },
+                            {"role": "user", "content": user_question}
+                        ],
+                        stream=True,
+                        temperature=0.7,
+                        max_tokens=300,
+                        timeout=60  # 60 second timeout for API
+                    )
+                    
+                    full_response = ""
+                    for chunk in stream_response:
+                        if chunk.choices[0].delta.content:
+                            text = chunk.choices[0].delta.content
+                            full_response += text
+                            yield f"data: {json.dumps({'text': text})}\n\n"
+                    
+                    # Store in memory (async, non-blocking)
+                    try:
+                        mem_client.add(
+                            user_id=user_id,
+                            messages=[
+                                {"role": "user", "content": user_question},
+                                {"role": "assistant", "content": full_response}
+                            ]
+                        )
+                    except:
+                        pass  # Memory storage is optional
+                        
+                except Exception as e:
+                    print(f"Stream generation error: {e}")
+                    yield f"data: {json.dumps({'text': 'Sorry, the AI response took too long. Please try again.'})}\n\n"
+        except Exception as e:
+            print(f"Unexpected error in stream generator: {e}")
+            yield f"data: {json.dumps({'text': 'An error occurred. Please try again.'})}\n\n"
+    
+    return StreamingResponse(generate(), media_type="text/event-stream")
