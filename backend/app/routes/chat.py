@@ -10,7 +10,8 @@ from app.schemas import ChatRequest
 # from app.services.qdrant_memory import add_memory, search_memory as qdrant_search
 from app.services.memory_service import mem_client
 from app.services.ai_tools import add_expense_tool, add_goal_tool, update_profile_tool
-from app.services.ai_service import detect_action
+#from app.services.ai_service import detect_action
+from app.services.ai_service import detect_user_intent
 
 router = APIRouter(prefix="/chat", tags=["chat"])
 
@@ -63,23 +64,50 @@ def chat(query: ChatRequest, db : Session = Depends(get_db)):
     }
     
     
-    action_result = detect_action(user_question)
+    result = detect_user_intent(user_question)
 
-    action = action_result.get("action")
-    data = action_result.get("data", {})
+    if result.intent_type == "impossible":
+        return {
+            "answer": "That doesn't seem realistic right now. Let's focus on achievable goals 😊"
+        }
 
-    if action == "add_expense":
-        msg = add_expense_tool(db, data)
-        return {"answer": msg}
+    if result.intent_type == "advice":
+        return {
+            "answer": generate_chat_response(prompt_data)
+        }
 
-    elif action == "add_goal":
-        msg = add_goal_tool(db, data)
-        return {"answer": msg}
+    if result.intent_type == "action":
 
-    elif action == "update_profile":
-        msg = update_profile_tool(db, data)
-        return {"answer": msg}
-    
+        if result.action == "add_expense":
+            return {
+                "answer": add_expense_tool(
+                    db,
+                    result.title,
+                    result.amount,
+                    result.category
+                )
+            }
+
+        if result.action == "add_goal":
+            return {
+                "answer": add_goal_tool(
+                    db,
+                    result.title,
+                    result.target_amount,
+                    result.deadline,
+                    result.goal_type
+                )
+            }
+
+        if result.action == "update_profile":
+            return {
+                "answer": update_profile_tool(
+                    db,
+                    result.monthly_income,
+                    result.monthly_saving_capacity
+                )
+            }
+        
     response = generate_chat_response(prompt_data)
     
     #save_message(user_id, response, "assistant")

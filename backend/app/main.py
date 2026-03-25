@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 from app.routes import expenses, chat
-from app import models, schemas
+from app import models, schema
 from app.database import engine
 #from app.services.qdrant_memory import init_qdrant
 from fastapi.middleware.cors import CORSMiddleware

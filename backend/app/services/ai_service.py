@@ -1,6 +1,7 @@
 import os
 from openai import OpenAI
 from dotenv import load_dotenv
+from app.schema.agent_schema import AgentAction
 
 load_dotenv()
 
@@ -84,6 +85,16 @@ Financial Warnings:
 6. **Answer the question directly** - Be concise and practical
 
 Answer based ONLY on the fresh data provided. Ignore conflicting information from memory.
+
+Instructions:
+
+- Think realistically
+- For travel questions:
+    - consider approximate cost
+    - compare with savings
+- If missing info → ask user
+- Do NOT give over-optimistic answers
+- Be practical and logical
 """
 
     response = client.chat.completions.create(
@@ -140,3 +151,81 @@ User Input:
     )
 
     return json.loads(response.choices[0].message.content)
+
+
+
+def detect_user_intent(user_question: str):
+    prompt = f"""
+You are a smart financial assistant.
+
+Your job is to classify user intent and extract action if needed.
+
+---
+
+Classify intent_type:
+
+- action → user wants to do something (add expense, goal, etc.)
+- advice → user asking decision (trip, saving, etc.)
+- question → general question
+- impossible → unrealistic request
+
+---
+
+RULES:
+
+1. DO NOT create actions for unrealistic things
+   Example: "I want to go to Mars" → impossible
+
+2. For advice:
+   - DO NOT create action
+   - let main system handle response
+
+3. Only create action if it is clear and realistic
+
+---
+
+Examples:
+
+"I spent 500 on food"
+→
+{{
+  "intent_type": "action",
+  "action": "add_expense",
+  "amount": 500,
+  "category": "food",
+  "title": "food"
+}}
+
+"Can I go to USA?"
+→
+{{
+  "intent_type": "advice",
+  "action": "none"
+}}
+
+"I want to go to Mars"
+→
+{{
+  "intent_type": "impossible",
+  "action": "none"
+}}
+
+---
+
+User Input:
+{user_question}
+
+Return ONLY JSON.
+"""
+
+    response = client.chat.completions.create(
+        model="gpt-4o-mini",
+        messages=[{"role": "user", "content": prompt}]
+    )
+
+    text = response.choices[0].message.content
+
+    try:
+        return AgentAction(**json.loads(text))
+    except:
+        return AgentAction(action="none")
