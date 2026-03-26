@@ -378,6 +378,9 @@ Output: {"intent_type":"action","action":"delete_due","creditor":"John"}
 Input: "Can I afford a trip?"
 Output: {"intent_type":"advice","action":"none"}
 
+Input: "Can I go to Jaipur?"
+Output: {"intent_type":"advice","action":"none"}
+
 ---
 
 User Input: """ + user_question + """
