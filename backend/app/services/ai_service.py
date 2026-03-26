@@ -123,11 +123,45 @@ def search_financial_info(query: str):
 
 
 def generate_chat_response(data):
+    # Format memory context as readable text
+    memory_text = "\n".join(data.get('memory_context', [])) if data.get('memory_context') else "[No prior context]"
+    
+    # Format goals as readable text
+    goals_list = data.get('goal_insights', [])
+    goals_text = ""
+    if goals_list:
+        for g in goals_list:
+            if g.get('type') == 'saving':
+                goals_text += f"- {g.get('goal')}: Target ₹{g.get('target_amount')}, Need {g.get('months_needed')} months, {g.get('months_left')} months left\n"
+            else:
+                goals_text += f"- {g.get('goal')}: Target ₹{g.get('target_amount')}, Spent ₹{g.get('spent')}, Progress {g.get('progress_percent')}%\n"
+    else:
+        goals_text = "[No active goals]"
+    
+    # Format dues as readable text  
+    dues_list = data.get('due_insights', [])
+    dues_text = ""
+    if dues_list:
+        for d in dues_list:
+            days = f" ({d.get('days_until_due')} days left)" if d.get('days_until_due') is not None else ""
+            dues_text += f"- {d.get('creditor')}: ₹{d.get('amount')} ({d.get('status')}){days}\n"
+    else:
+        dues_text = "[No pending dues]"
+    
+    # Format risk flags with proper formatting
+    risk_list = data.get('risk_flags', [])
+    risk_text = ""
+    if risk_list:
+        for flag in risk_list:
+            risk_text += f"⚠️  {flag}\n"
+    else:
+        risk_text = "[No risk flags]"
+    
     prompt = f"""
 You are a smart financial assistant helping users manage their money.
 
-Previous Conversation (for context and tone):
-{data.get('memory_context', [])}
+Previous Conversation Memory:
+{memory_text}
 
 User's Question:
 {data.get('user_question')}
@@ -135,21 +169,21 @@ User's Question:
 =============== FRESH LIVE DATA (USE THIS FOR ALL FACTS) ===============
 
 CURRENT FINANCIAL STATUS (Updated Real-Time):
-- Total Spending (This Period): {data.get('total_spending')}
-- Top Spending Category: {data.get('top_category')}
-- Monthly Income: {data.get('monthly_income')}
-- Monthly Saving Capacity: {data.get('monthly_capacity')}
-- Current Savings: {data.get('savings_this_period')}
-- Accumulated Total Savings: {data.get('accumulated_savings')}
+- Total Spending (This Period): ₹{data.get('total_spending', 0)}
+- Top Spending Category: {data.get('top_category') or 'Not determined'}
+- Monthly Income: ₹{data.get('monthly_income') or 'Not set'}
+- Monthly Saving Capacity: ₹{data.get('monthly_capacity') or 'Not set'}
+- Current Savings This Period: ₹{data.get('savings_this_period') or 0}
+- Accumulated Total Savings: ₹{data.get('accumulated_savings') or 0}
 
 ACTIVE GOALS (CURRENT FROM DATABASE):
-{data.get('goal_insights')}
+{goals_text}
 
 PENDING DUES & OBLIGATIONS:
-{data.get('due_insights')}
+{dues_text}
 
 Financial Warnings:
-{data.get('risk_flags')}
+{risk_text}
 
 =============== CRITICAL INSTRUCTIONS ===============
 
@@ -162,6 +196,22 @@ Financial Warnings:
 7. **Consider Dues in Analysis** - Factor in pending dues when giving financial advice
 8. **Ask for Clarification** - If user's request is vague, ask clarifying questions
 9. **Be Realistic** - Don't promise unrealistic results
+
+TRIP PLANNING SPECIAL RULES:
+- If user asks about trips (Goa, hill station, vacation, etc.):
+  - Suggest realistic costs:
+    * Goa: ₹25,000-₹75,000 (3-7 days depending on comfort level)
+    * Hill stations: ₹15,000-₹40,000
+    * International: ₹100,000+
+  - If their goal amount is < ₹5,000 for a trip, point out it's unrealistic
+  - Ask "What's your actual budget for this trip?"
+  - Then compare THAT budget with their savings, not the goal amount
+
+GOAL VALIDATION:
+- If saving goal's target is unrealistic for the goal type, mention it
+- For travel: budgets < ₹10,000 are usually not enough
+- For electronics: budgets < ₹5,000 are tight
+- For vehicles: budgets < ₹100,000 are not realistic
 
 Answer based ONLY on the fresh data provided. Ignore conflicting information from memory.
 
@@ -312,6 +362,18 @@ Output: {"intent_type":"action","action":"add_expense","amount":200,"category":"
 
 Input: "I owe 5000 to John"
 Output: {"intent_type":"action","action":"add_due","amount":5000,"creditor":"John","title":"Loan from John","due_date":"2026-04-26","due_category":"personal"}
+
+Input: "Delete the goal trip"
+Output: {"intent_type":"action","action":"delete_goal","goal_name":"trip"}
+
+Input: "Remove my savings goal"
+Output: {"intent_type":"action","action":"delete_goal","goal_name":"savings"}
+
+Input: "Delete the expense"
+Output: {"intent_type":"action","action":"delete_expense","title":"recent expense"}
+
+Input: "Remove the due to John"
+Output: {"intent_type":"action","action":"delete_due","creditor":"John"}
 
 Input: "Can I afford a trip?"
 Output: {"intent_type":"advice","action":"none"}

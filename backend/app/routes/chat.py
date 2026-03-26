@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends
 from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 from app.database import get_db
-from app.services.pattern_service import get_weekly_speedning
+from app.services.pattern_service import get_weekly_spending
 from app.services.ai_service import generate_ai_advice, generate_chat_response, generate_clarifying_questions
 from app import models, schemas
 from app.schemas import ChatRequest
@@ -28,24 +28,30 @@ def chat(query: ChatRequest, db: Session = Depends(get_db)):
         return {"error": "Message is required"}
     
     # Fetch fresh data from database
-    insights = get_weekly_speedning(db)
+    insights = get_weekly_spending(db)
     
     # Get memory context - but filter out old factual data
     if refresh_context:
         memory_context = []
     else:
-        memories = mem_client.search(
-            user_id=user_id,
-            query=user_question,
-        )
-        
-        memory_context = []
-        for mem in memories.get("results", []):
-            mem_text = mem.get("memory", "")
-            skip_keywords = ['saving goal', 'expense goal', 'total spending', 'monthly income', 
-                           'monthly saving', 'goal progress', 'birthday party', 'goa trip']
-            if mem_text and not any(keyword.lower() in mem_text.lower() for keyword in skip_keywords):
-                memory_context.append(mem_text)
+        try:
+            memories = mem_client.search(
+                user_id=user_id,
+                query=user_question,
+                limit=5
+            )
+            
+            memory_context = []
+            if memories and memories.get("results"):
+                for mem in memories.get("results", []):
+                    mem_text = mem.get("memory", "")
+                    skip_keywords = ['saving goal', 'expense goal', 'total spending', 'monthly income', 
+                                   'monthly saving', 'goal progress', 'birthday party', 'goa trip']
+                    if mem_text and not any(keyword.lower() in mem_text.lower() for keyword in skip_keywords):
+                        memory_context.append(mem_text)
+        except Exception as e:
+            print(f"Memory search error: {e}")
+            memory_context = []
     
     # Prepare data for AI
     prompt_data = {
@@ -201,11 +207,59 @@ def chat(query: ChatRequest, db: Session = Depends(get_db)):
         
         # DELETE GOAL (NEW)
         elif result.action == "delete_goal":
-            action_result = delete_goal_tool(db, result.goal_id or 0)
+            try:
+                # Try to find goal by name if goal_id not provided
+                if hasattr(result, 'goal_id') and result.goal_id:
+                    action_result = delete_goal_tool(db, result.goal_id)
+                elif hasattr(result, 'goal_name') and result.goal_name:
+                    # Find goal by name
+                    matching_goal = db.query(models.Goal).filter(
+                        models.Goal.title.ilike(f"%{result.goal_name}%")
+                    ).first()
+                    
+                    if matching_goal:
+                        action_result = delete_goal_tool(db, matching_goal.id)
+                    else:
+                        # List available goals
+                        all_goals = db.query(models.Goal).all()
+                        if all_goals:
+                            goal_list = "\n".join([f"  • {g.title}" for g in all_goals])
+                            action_result = f"Goal '{result.goal_name}' not found. Your goals:\n{goal_list}"
+                        else:
+                            action_result = "You have no goals to delete."
+                else:
+                    action_result = "Please specify which goal to delete!"
+            except Exception as e:
+                print(f"Error deleting goal: {e}")
+                action_result = f"Error deleting goal: {str(e)[:100]}"
         
         # DELETE DUE (NEW)
         elif result.action == "delete_due":
-            action_result = delete_due_tool(db, result.due_id or 0)
+            try:
+                # Try to find due by creditor name if due_id not provided
+                if hasattr(result, 'due_id') and result.due_id:
+                    action_result = delete_due_tool(db, result.due_id)
+                elif hasattr(result, 'creditor') and result.creditor:
+                    # Find due by creditor name
+                    matching_due = db.query(models.Due).filter(
+                        models.Due.creditor.ilike(f"%{result.creditor}%")
+                    ).first()
+                    
+                    if matching_due:
+                        action_result = delete_due_tool(db, matching_due.id)
+                    else:
+                        # List available dues
+                        all_dues = db.query(models.Due).filter(models.Due.status == "pending").all()
+                        if all_dues:
+                            due_list = "\n".join([f"  • ₹{d.amount} to {d.creditor}" for d in all_dues])
+                            action_result = f"Due to '{result.creditor}' not found. Your pending dues:\n{due_list}"
+                        else:
+                            action_result = "You have no pending dues to delete."
+                else:
+                    action_result = "Please specify which due to delete!"
+            except Exception as e:
+                print(f"Error deleting due: {e}")
+                action_result = f"Error deleting due: {str(e)[:100]}"
         
         # UPDATE PROFILE
         elif result.action == "update_profile":
@@ -279,7 +333,7 @@ async def chat_stream(query: ChatRequest, db: Session = Depends(get_db)):
     memory_context = []
     if result and result.intent_type in ["advice", "question"]:
         try:
-            insights = get_weekly_speedning(db)
+            insights = get_weekly_spending(db)
             if not refresh_context:
                 try:
                     memories = mem_client.search(user_id=user_id, query=user_question)
@@ -331,27 +385,47 @@ async def chat_stream(query: ChatRequest, db: Session = Depends(get_db)):
             else:
                 # Stream the advice/chat response with timeout protection
                 try:
-                    stream_response = client.chat.completions.create(
-                        model="gpt-4o-mini",
-                        messages=[
-                            {
-                                "role": "system",
-                                "content": "You are a helpful financial advisor. Answer concisely in 100-200 words."
-                            },
-                            {"role": "user", "content": user_question}
-                        ],
-                        stream=True,
-                        temperature=0.7,
-                        max_tokens=300,
-                        timeout=60  # 60 second timeout for API
-                    )
-                    
+                    # Format data like in regular endpoint
                     full_response = ""
-                    for chunk in stream_response:
-                        if chunk.choices[0].delta.content:
-                            text = chunk.choices[0].delta.content
-                            full_response += text
-                            yield f"data: {json.dumps({'text': text})}\n\n"
+                    if insights:
+                        prompt_data = {
+                            "user_question": user_question,
+                            "total_spending": insights.get("total_spending", 0),
+                            "top_category": insights.get("top_category"),
+                            "monthly_capacity": insights.get("monthly_capacity") or 0,
+                            "monthly_income": insights.get("monthly_income") or 0,
+                            "goal_insights": insights.get("goal_insights", []),
+                            "due_insights": insights.get("due_insights", []),
+                            "savings_this_period": insights.get("savings_this_period") or 0,
+                            "accumulated_savings": insights.get("accumulated_savings") or 0,
+                            "risk_flags": insights.get("risk_flags", []),
+                            "memory_context": memory_context,
+                        }
+                        # Generate response with full data context
+                        full_response = generate_chat_response(prompt_data)
+                        yield f"data: {json.dumps({'text': full_response})}\n\n"
+                    else:
+                        # Fallback: basic response without stats
+                        stream_response = client.chat.completions.create(
+                            model="gpt-4o-mini",
+                            messages=[
+                                {
+                                    "role": "system",
+                                    "content": "You are a helpful financial advisor. Answer concisely in 100-200 words."
+                                },
+                                {"role": "user", "content": user_question}
+                            ],
+                            stream=True,
+                            temperature=0.7,
+                            max_tokens=300,
+                            timeout=60
+                        )
+                        
+                        for chunk in stream_response:
+                            if chunk.choices[0].delta.content:
+                                text = chunk.choices[0].delta.content
+                                full_response += text
+                                yield f"data: {json.dumps({'text': text})}\n\n"
                     
                     # Store in memory (async, non-blocking)
                     try:

@@ -20,7 +20,7 @@ print("=" * 70)
 # Test 1: Import and basic syntax checks
 print("\n1️⃣  Testing imports...")
 try:
-    from app.services.ai_service import detect_user_intent
+    from app.services.ai_service import detect_user_intent # pyright: ignore[reportMissingImports]
     print("   ✅ detect_user_intent imported successfully")
 except Exception as e:
     print(f"   ❌ Import failed: {e}")

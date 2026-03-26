@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 from app.database import SessionLocal, engine
 from app import models, schemas
 from app.database import get_db
-from app.services.pattern_service import get_weekly_speedning
+from app.services.pattern_service import get_weekly_spending
 # create tables
 
 router = APIRouter(prefix="/expenses", tags=["Expenses"])
@@ -78,7 +78,7 @@ def delete_expense(expense_id: int, db: Session = Depends(get_db)):
 
 @router.get("/insights/weekly")
 def weekly_insights(db : Session = Depends(get_db)):
-    return get_weekly_speedning(db)
+    return get_weekly_spending(db)
 
 @router.post('/profile')
 def set_profile(profile : schemas.UserProfileCreate, db : Session = Depends(get_db)):

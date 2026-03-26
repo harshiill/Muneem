@@ -71,7 +71,7 @@ def format_due_insights(dues_data):
 
 
 # 🔹 Main Function (UPDATED)
-def get_weekly_speedning(db: Session):
+def get_weekly_spending(db: Session):
     one_week_ago = datetime.utcnow() - timedelta(days=7)
 
     # 🔹 Weekly Expenses
