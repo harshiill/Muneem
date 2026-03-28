@@ -1,69 +1,80 @@
-'use client'
+"use client";
 
-import { useEffect, useState } from 'react'
-import { AddDueForm, DueCard } from '@/components'
-import { expenseApi } from '@/lib/api'
-import { Loader2 } from 'lucide-react'
-import toast from 'react-hot-toast'
+import { useEffect, useState } from "react";
+import { AddDueForm, DueCard } from "@/components";
+import { expenseApi } from "@/lib/api";
+import { Loader2, Search } from "lucide-react";
+import toast from "react-hot-toast";
 
 interface Due {
-  id: number
-  title: string
-  amount: number
-  creditor: string
-  due_date: string
-  category: string
-  status: 'pending' | 'paid' | 'overdue'
-  created_at: string
-  notes?: string
+  id: number;
+  title: string;
+  amount: number;
+  creditor: string;
+  due_date: string;
+  category: string;
+  status: "pending" | "paid" | "overdue";
+  created_at: string;
+  notes?: string;
 }
 
 export default function DuesPage() {
-  const [dues, setDues] = useState<Due[]>([])
-  const [isLoading, setIsLoading] = useState(true)
-  const [activeTab, setActiveTab] = useState<'all' | 'pending' | 'paid'>('all')
-  const [showAddForm, setShowAddForm] = useState(false)
+  const [dues, setDues] = useState<Due[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState<"all" | "pending" | "paid">("all");
+  const [showAddForm, setShowAddForm] = useState(false);
+  const [search, setSearch] = useState("");
 
   useEffect(() => {
-    fetchDues()
-  }, [])
+    fetchDues();
+  }, []);
 
   const fetchDues = async () => {
-    setIsLoading(true)
+    setIsLoading(true);
     try {
-      const data = await expenseApi.getDues()
-      setDues(Array.isArray(data) ? data : [])
+      const data = await expenseApi.getDues();
+      setDues(Array.isArray(data) ? data : []);
     } catch (error) {
-      console.error('Fetch dues error:', error)
-      toast.error('Failed to fetch dues')
+      console.error("Fetch dues error:", error);
+      toast.error("Failed to fetch dues");
     } finally {
-      setIsLoading(false)
+      setIsLoading(false);
     }
-  }
+  };
 
   const handleDeleteDue = (deletedId: number) => {
-    setDues(dues.filter((due) => due.id !== deletedId))
-  }
+    setDues(dues.filter((due) => due.id !== deletedId));
+  };
 
   const handleStatusChange = (updatedId: number, newStatus: string) => {
-    setDues(dues.map((due) =>
-      due.id === updatedId ? { ...due, status: newStatus as 'pending' | 'paid' | 'overdue' } : due
-    ))
-  }
+    setDues(
+      dues.map((due) =>
+        due.id === updatedId
+          ? { ...due, status: newStatus as "pending" | "paid" | "overdue" }
+          : due,
+      ),
+    );
+  };
 
   const filteredDues = dues.filter((due) => {
-    if (activeTab === 'pending') return due.status === 'pending'
-    if (activeTab === 'paid') return due.status === 'paid'
-    return true
-  })
+    const matchesTab =
+      activeTab === "all" ||
+      (activeTab === "pending" && due.status === "pending") ||
+      (activeTab === "paid" && due.status === "paid");
+    const matchesSearch =
+      search === "" ||
+      due.creditor.toLowerCase().includes(search.toLowerCase()) ||
+      due.title.toLowerCase().includes(search.toLowerCase());
+    return matchesTab && matchesSearch;
+  });
 
   const totalPending = dues
-    .filter((d) => d.status === 'pending')
-    .reduce((sum, d) => sum + d.amount, 0)
+    .filter((d) => d.status === "pending")
+    .reduce((sum, d) => sum + d.amount, 0);
 
   const totalPaid = dues
-    .filter((d) => d.status === 'paid')
-    .reduce((sum, d) => sum + d.amount, 0)
+    .filter((d) => d.status === "paid")
+    .reduce((sum, d) => sum + d.amount, 0);
 
   return (
     <div className="min-h-screen bg-background">
@@ -87,7 +98,9 @@ export default function DuesPage() {
             </p>
           </div>
           <div className="bg-card border border-yellow-500/30 rounded-lg p-6">
-            <p className="text-sm text-muted-foreground mb-2">Pending Payment</p>
+            <p className="text-sm text-muted-foreground mb-2">
+              Pending Payment
+            </p>
             <p className="text-3xl font-bold text-yellow-500">
               ₹{totalPending.toLocaleString()}
             </p>
@@ -104,27 +117,39 @@ export default function DuesPage() {
           {/* Dues List */}
           <div>
             <div className="bg-card border border-border rounded-lg p-6">
+              {/* Search */}
+              <div className="relative mb-4">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
+                <input
+                  type="text"
+                  placeholder="Search by name or title..."
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  className="w-full pl-9 pr-4 py-2.5 rounded-xl bg-secondary border border-border text-sm text-foreground placeholder-muted-foreground focus:border-primary focus:ring-2 focus:ring-primary/10 outline-none transition-colors"
+                />
+              </div>
+
               {/* Tabs */}
               <div className="flex gap-3 mb-6 border-b border-border pb-4">
-                {['all', 'pending', 'paid'].map((tab) => (
+                {["all", "pending", "paid"].map((tab) => (
                   <button
                     key={tab}
                     onClick={() => setActiveTab(tab as any)}
                     className={`px-4 py-2 rounded-lg font-medium transition-all ${
                       activeTab === tab
-                        ? 'bg-gradient-to-r from-yellow-500 to-orange-500 text-white'
-                        : 'text-muted-foreground hover:text-foreground'
+                        ? "bg-gradient-to-r from-yellow-500 to-orange-500 text-white"
+                        : "text-muted-foreground hover:text-foreground"
                     }`}
                   >
-                    {tab === 'all' && 'All Dues'}
-                    {tab === 'pending' && 'Pending'}
-                    {tab === 'paid' && 'Paid'}
+                    {tab === "all" && "All Dues"}
+                    {tab === "pending" && "Pending"}
+                    {tab === "paid" && "Paid"}
                   </button>
                 ))}
               </div>
 
               {/* Dues List */}
-              <div className="space-y-4">
+              <div className="space-y-4 max-h-[55vh] overflow-y-auto pr-1">
                 {isLoading ? (
                   <div className="flex items-center justify-center py-12">
                     <Loader2 className="w-8 h-8 animate-spin text-primary" />
@@ -132,9 +157,10 @@ export default function DuesPage() {
                 ) : filteredDues.length === 0 ? (
                   <div className="text-center py-12">
                     <p className="text-muted-foreground">
-                      {activeTab === 'all' && 'No dues recorded yet. Great!'}
-                      {activeTab === 'pending' && 'No pending dues. You are all clear!'}
-                      {activeTab === 'paid' && 'No paid dues yet.'}
+                      {activeTab === "all" && "No dues recorded yet. Great!"}
+                      {activeTab === "pending" &&
+                        "No pending dues. You are all clear!"}
+                      {activeTab === "paid" && "No paid dues yet."}
                     </p>
                   </div>
                 ) : (
@@ -154,7 +180,7 @@ export default function DuesPage() {
 
         {/* Add Due Button - Bottom Right */}
         <div className="fixed bottom-8 right-8">
-          <button 
+          <button
             onClick={() => setShowAddForm(true)}
             className="bg-gradient-to-r from-yellow-500 to-orange-500 hover:from-yellow-600 hover:to-orange-600 text-white font-semibold py-3 px-6 rounded-full shadow-lg transition-all flex items-center gap-2"
           >
@@ -163,8 +189,11 @@ export default function DuesPage() {
         </div>
 
         {/* Add Due Form Modal */}
-        <AddDueForm isOpen={showAddForm} onClose={() => setShowAddForm(false)} />
+        <AddDueForm
+          isOpen={showAddForm}
+          onClose={() => setShowAddForm(false)}
+        />
       </div>
     </div>
-  )
+  );
 }

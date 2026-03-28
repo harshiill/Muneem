@@ -1,5 +1,6 @@
-from mem0 import Memory
 import os
+
+from mem0 import Memory
 
 config = {
     "version": "v1.1",
@@ -7,23 +8,55 @@ config = {
         "provider": "openai",
         "config": {
             "api_key": os.getenv("OPENAI_API_KEY"),
-            "model": "text-embedding-3-small"
-        }
+            "model": "text-embedding-3-small",
+        },
     },
     "llm": {
         "provider": "openai",
-        "config": {
-            "api_key": os.getenv("OPENAI_API_KEY"),
-            "model": "gpt-4.1-mini"
-        }
+        "config": {"api_key": os.getenv("OPENAI_API_KEY"), "model": "gpt-4.1-mini"},
     },
     "vector_store": {
         "provider": "qdrant",
-        "config": {
-            "host": "localhost",
-            "port": 6333
-        }
-    }
+        "config": {"host": "localhost", "port": 6333},
+    },
 }
 
-mem_client = Memory.from_config(config)
+_mem_client = None
+
+
+def get_mem_client():
+    """Lazily initialize the mem0 Memory client on first use."""
+    global _mem_client
+    if _mem_client is None:
+        _mem_client = Memory.from_config(config)
+    return _mem_client
+
+
+class LazyMemClient:
+    """
+    A proxy that defers mem0 Memory initialization until the first method call.
+    Drop-in replacement for the previously eagerly-initialized mem_client.
+    """
+
+    def search(self, *args, **kwargs):
+        return get_mem_client().search(*args, **kwargs)
+
+    def add(self, *args, **kwargs):
+        return get_mem_client().add(*args, **kwargs)
+
+    def get_all(self, *args, **kwargs):
+        return get_mem_client().get_all(*args, **kwargs)
+
+    def delete(self, *args, **kwargs):
+        return get_mem_client().delete(*args, **kwargs)
+
+    def update(self, *args, **kwargs):
+        return get_mem_client().update(*args, **kwargs)
+
+    def reset(self, *args, **kwargs):
+        return get_mem_client().reset(*args, **kwargs)
+
+
+# Public singleton — behaves exactly like the old mem_client but
+# only connects to Qdrant when a method is first called.
+mem_client = LazyMemClient()
