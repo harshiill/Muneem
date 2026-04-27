@@ -1,5 +1,6 @@
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
+import traceback
 
 from app import models, schemas
 from app.database import SessionLocal, engine, get_db
@@ -88,7 +89,31 @@ def delete_expense(expense_id: int, db: Session = Depends(get_db)):
 
 @router.get("/insights/weekly")
 def weekly_insights(db: Session = Depends(get_db)):
-    return get_weekly_spending(db)
+    try:
+        return get_weekly_spending(db)
+    except Exception as exc:
+        print(f"[weekly_insights] failed: {exc}")
+        traceback.print_exc()
+        return {
+            "total_spending": 0,
+            "transactions": 0,
+            "category_breakdown": {},
+            "top_category": None,
+            "insight": "Unable to compute insights right now.",
+            "goal_insights": [],
+            "due_insights": [],
+            "monthly_savings": {},
+            "savings_this_period": None,
+            "can_meet_saving_goal": None,
+            "savings_insight": "",
+            "accumulated_savings": 0,
+            "risk_flags": ["Insights service temporarily unavailable."],
+            "ai_advice": "AI advice is temporarily unavailable.",
+            "monthly_income": None,
+            "monthly_capacity": None,
+            "total_pending_dues": 0,
+            "total_overdue": 0,
+        }
 
 
 @router.post("/profile")

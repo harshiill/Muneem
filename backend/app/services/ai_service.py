@@ -43,15 +43,18 @@ Instructions:
 - Keep response concise and practical
 """
 
-    response = client.chat.completions.create(
-        model="gpt-4o-mini",
-        messages=[
-            {"role": "system", "content": "You are a helpful financial advisor."},
-            {"role": "user", "content": prompt}
-        ]
-    )
-
-    return response.choices[0].message.content
+    try:
+        response = client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=[
+                {"role": "system", "content": "You are a helpful financial advisor."},
+                {"role": "user", "content": prompt}
+            ]
+        )
+        return response.choices[0].message.content
+    except Exception as e:
+        print(f"[generate_ai_advice] AI call failed: {e}")
+        return "AI advice is temporarily unavailable. Your core financial insights are still up to date."
 
 
 # 🔹 NEW: Generate Clarifying Questions
