@@ -2,6 +2,22 @@ import os
 
 from mem0 import Memory
 
+from dotenv import load_dotenv
+
+load_dotenv()
+
+qdrant_url = os.getenv("QDRANT_URL")
+qdrant_api_key = os.getenv("QDRANT_API_KEY")
+
+vector_store_config = {"collection_name": "chat_memory"}
+if qdrant_url and qdrant_api_key:
+    vector_store_config["url"] = qdrant_url
+    vector_store_config["port"] = 443
+    vector_store_config["api_key"] = qdrant_api_key
+else:
+    vector_store_config["host"] = "localhost"
+    vector_store_config["port"] = 6333
+
 config = {
     "version": "v1.1",
     "embedder": {
@@ -13,11 +29,11 @@ config = {
     },
     "llm": {
         "provider": "openai",
-        "config": {"api_key": os.getenv("OPENAI_API_KEY"), "model": "gpt-4.1-mini"},
+        "config": {"api_key": os.getenv("OPENAI_API_KEY"), "model": "gpt-4o-mini"},
     },
     "vector_store": {
         "provider": "qdrant",
-        "config": {"host": "localhost", "port": 6333},
+        "config": vector_store_config,
     },
 }
 

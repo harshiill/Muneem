@@ -2,10 +2,20 @@ from qdrant_client import QdrantClient
 from qdrant_client.models import PointStruct, Distance, VectorParams
 from sentence_transformers import SentenceTransformer
 import uuid 
+import os
+from dotenv import load_dotenv
+
+load_dotenv()
 
 model = SentenceTransformer('all-MiniLM-L6-v2')
 
-client = QdrantClient(path="./qdrant_data")
+qdrant_url = os.getenv("QDRANT_URL")
+qdrant_api_key = os.getenv("QDRANT_API_KEY")
+
+if qdrant_url and qdrant_api_key:
+    client = QdrantClient(url=qdrant_url, port=443, api_key=qdrant_api_key)
+else:
+    client = QdrantClient(path="./qdrant_data")
 
 COLLECTION_NAME = "chat_memory"
 
