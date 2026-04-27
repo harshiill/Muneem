@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { AddDueForm, DueCard } from "@/components";
 import { expenseApi } from "@/lib/api";
+import { formatINR } from "@/lib/currency";
 import { Loader2, Search } from "lucide-react";
 import toast from "react-hot-toast";
 
@@ -94,7 +95,7 @@ export default function DuesPage() {
           <div className="bg-card border border-border rounded-lg p-6">
             <p className="text-sm text-muted-foreground mb-2">Total Dues</p>
             <p className="text-3xl font-bold text-foreground">
-              ₹{(totalPending + totalPaid).toLocaleString()}
+              {formatINR(totalPending + totalPaid)}
             </p>
           </div>
           <div className="bg-card border border-yellow-500/30 rounded-lg p-6">
@@ -102,13 +103,13 @@ export default function DuesPage() {
               Pending Payment
             </p>
             <p className="text-3xl font-bold text-yellow-500">
-              ₹{totalPending.toLocaleString()}
+              {formatINR(totalPending)}
             </p>
           </div>
           <div className="bg-card border border-green-500/30 rounded-lg p-6">
             <p className="text-sm text-muted-foreground mb-2">Already Paid</p>
             <p className="text-3xl font-bold text-green-500">
-              ₹{totalPaid.toLocaleString()}
+              {formatINR(totalPaid)}
             </p>
           </div>
         </div>

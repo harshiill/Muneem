@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { profileApi } from '@/lib/api'
 import { useProfileStore } from '@/lib/store'
 import { Card } from '@/components/Card'
+import { formatINR } from '@/lib/currency'
 import { Loader2 } from 'lucide-react'
 import toast from 'react-hot-toast'
 
@@ -97,7 +98,7 @@ export default function ProfilePage() {
                 <div>
                   <p className="text-sm text-muted-foreground mb-2">Monthly Income</p>
                   <p className="text-4xl font-bold text-foreground">
-                    ${profile?.monthly_income.toFixed(2) || '0.00'}
+                    {formatINR(profile?.monthly_income ?? 0)}
                   </p>
                 </div>
 
@@ -108,7 +109,7 @@ export default function ProfilePage() {
                     Monthly Saving Capacity
                   </p>
                   <p className="text-4xl font-bold text-primary">
-                    ${profile?.monthly_saving_capacity.toFixed(2) || '0.00'}
+                    {formatINR(profile?.monthly_saving_capacity ?? 0)}
                   </p>
                 </div>
 
@@ -136,7 +137,7 @@ export default function ProfilePage() {
               <form onSubmit={handleSave} className="space-y-4">
                 <div>
                   <label className="block text-sm font-medium text-foreground mb-2">
-                    Monthly Income ($)
+                    Monthly Income (₹)
                   </label>
                   <input
                     type="number"
@@ -152,7 +153,7 @@ export default function ProfilePage() {
 
                 <div>
                   <label className="block text-sm font-medium text-foreground mb-2">
-                    Monthly Saving Capacity ($)
+                    Monthly Saving Capacity (₹)
                   </label>
                   <input
                     type="number"
@@ -205,13 +206,13 @@ export default function ProfilePage() {
             value="📈"
             description={
               profile
-                ? `You can save $${profile.monthly_saving_capacity.toFixed(2)} each month`
+                ? `You can save ${formatINR(profile.monthly_saving_capacity)} each month`
                 : 'Set your income and savings capacity to see recommendations'
             }
           />
           <Card
             title="Annual Savings"
-            value={`$${profile ? (profile.monthly_saving_capacity * 12).toFixed(2) : '0.00'}`}
+            value={formatINR(profile ? profile.monthly_saving_capacity * 12 : 0)}
             description="Potential yearly savings at current rate"
           />
         </div>

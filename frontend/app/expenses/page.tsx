@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { expenseApi } from '@/lib/api'
+import { formatINR } from '@/lib/currency'
 import { Loader2, Trash2, Filter } from 'lucide-react'
 import toast from 'react-hot-toast'
 
@@ -151,13 +152,13 @@ export default function ExpensesPage() {
             <div className="rounded-lg border border-border/50 bg-card hover:shadow-lg hover:shadow-primary/10 p-6 transition-all">
               <p className="text-sm text-muted-foreground mb-2">Total Spending</p>
               <p className="text-4xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
-                ${totalExpenses.toFixed(2)}
+                {formatINR(totalExpenses)}
               </p>
             </div>
             <div className="rounded-lg border border-border/50 bg-card hover:shadow-lg hover:shadow-primary/10 p-6 transition-all">
               <p className="text-sm text-muted-foreground mb-2">Average Expense</p>
               <p className="text-4xl font-bold text-foreground">
-                ${averageExpense.toFixed(2)}
+                {formatINR(averageExpense)}
               </p>
             </div>
             <div className="rounded-lg border border-border/50 bg-card hover:shadow-lg hover:shadow-primary/10 p-6 transition-all">
@@ -208,7 +209,7 @@ export default function ExpensesPage() {
                   <div key={category} className="p-3 rounded-lg bg-secondary/50">
                     <p className="text-xs text-muted-foreground">{category}</p>
                     <p className="text-sm font-semibold text-primary mt-1">
-                      ${amount.toFixed(2)}
+                      {formatINR(amount)}
                     </p>
                   </div>
                 ))}
@@ -243,7 +244,7 @@ export default function ExpensesPage() {
                           {expense.splits.map((split) => (
                             <div key={split.id} className="flex items-center justify-between gap-2">
                               <p className="text-xs text-muted-foreground">
-                                💔 {split.person_name} owes ₹{split.amount_owed.toFixed(0)}
+                                💔 {split.person_name} owes {formatINR(split.amount_owed)}
                               </p>
                               <button
                                 onClick={() => handleDeleteSplit(split.id || 0, expense.id)}
@@ -259,7 +260,7 @@ export default function ExpensesPage() {
                       )}
                     </div>
                     <div className="text-right">
-                      <p className="font-semibold text-primary">₹{expense.amount.toFixed(0)}</p>
+                      <p className="font-semibold text-primary">{formatINR(expense.amount)}</p>
                     </div>
                     <div className="text-center">
                       <span className="px-3 py-1 rounded-full bg-primary/20 text-primary text-xs font-medium">
@@ -306,7 +307,7 @@ export default function ExpensesPage() {
                           {expense.splits.map((split) => (
                             <div key={split.id} className="flex items-center justify-between gap-2">
                               <p className="text-xs text-muted-foreground">
-                                💔 {split.person_name}: ₹{split.amount_owed.toFixed(0)}
+                                💔 {split.person_name}: {formatINR(split.amount_owed)}
                               </p>
                               <button
                                 onClick={() => handleDeleteSplit(split.id || 0, expense.id)}
@@ -322,7 +323,7 @@ export default function ExpensesPage() {
                       )}
                     </div>
                     <p className="font-bold text-primary text-lg ml-4">
-                      ₹{expense.amount.toFixed(0)}
+                      {formatINR(expense.amount)}
                     </p>
                   </div>
                   <div className="flex justify-between items-center">

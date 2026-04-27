@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { expenseApi, goalsApi } from '@/lib/api'
 import { Goal } from '@/lib/store'
+import { formatINR } from '@/lib/currency'
 import { Loader2 } from 'lucide-react'
 import toast from 'react-hot-toast'
 
@@ -120,7 +121,7 @@ export function AddExpenseForm() {
           {/* Amount Input */}
           <div>
             <label className="block text-sm font-medium text-foreground mb-2">
-              Amount ($)
+              Amount (₹)
             </label>
             <input
               type="number"
@@ -172,7 +173,7 @@ export function AddExpenseForm() {
                 <option value="">No goal selected</option>
                 {goals.map((goal) => (
                   <option key={goal.id} value={String(goal.id)}>
-                    {goal.title} (${goal.target_amount.toFixed(2)})
+                    {goal.title} ({formatINR(goal.target_amount)})
                   </option>
                 ))}
               </select>

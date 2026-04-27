@@ -193,7 +193,7 @@ import { Card } from '@/components/Card'
 
 <Card 
   title="Total Spending" 
-  value="$250.50" 
+  value="₹250.50" 
   icon="💰"
   description="Total amount spent"
 />

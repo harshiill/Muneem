@@ -70,7 +70,7 @@ export function AddGoalForm({ onSuccess }: AddGoalFormProps) {
           {/* Target Amount */}
           <div>
             <label className="block text-sm font-medium text-foreground mb-2">
-              Target Amount ($)
+              Target Amount (₹)
             </label>
             <input
               type="number"

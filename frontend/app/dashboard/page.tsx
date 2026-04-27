@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { Card } from '@/components/Card'
 import { expenseApi } from '@/lib/api'
+import { formatINR } from '@/lib/currency'
 import { Loader2, TrendingUp, AlertTriangle } from 'lucide-react'
 import toast from 'react-hot-toast'
 
@@ -72,7 +73,7 @@ export default function DashboardPage() {
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
               <Card
                 title="Total Spending"
-                value={`$${data.total_spending.toFixed(2)}`}
+                value={formatINR(data.total_spending)}
                 icon="💸"
                 description="Total amount spent"
               />
@@ -141,7 +142,7 @@ export default function DashboardPage() {
                         {/* Target Amount */}
                         <div className="mb-4">
                           <p className="text-2xl font-bold text-foreground">
-                            ${goal.target_amount.toFixed(2)}
+                            {formatINR(goal.target_amount)}
                           </p>
                           <p className="text-xs text-muted-foreground mt-1">Target Amount</p>
                         </div>
@@ -164,7 +165,7 @@ export default function DashboardPage() {
                               </div>
                               {goal.spent !== undefined && goal.remaining !== undefined && (
                                 <p className="text-xs text-muted-foreground mt-2">
-                                  ${goal.spent.toFixed(2)} spent • ${goal.remaining.toFixed(2)} remaining
+                                  {formatINR(goal.spent)} spent • {formatINR(goal.remaining)} remaining
                                 </p>
                               )}
                             </div>

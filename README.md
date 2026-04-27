@@ -190,7 +190,7 @@ curl -X POST http://127.0.0.1:8000/expenses/ \
   }'
 ```
 
-## Deployment (Student-Friendly, $0 Infra)
+## Deployment (Student-Friendly, ₹0 Infra)
 
 Recommended for a fast, free launch:
 - **Frontend**: Vercel (free). Set `NEXT_PUBLIC_API_URL=https://<your-backend-url>`.

@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { expenseApi } from "@/lib/api";
+import { formatINR } from "@/lib/currency";
 import {
   Loader2,
   CheckCircle2,
@@ -148,10 +149,7 @@ export default function LentPage() {
                 Total Outstanding
               </p>
               <p className="text-3xl font-bold text-green-600 dark:text-green-400">
-                ₹
-                {totalLent.toLocaleString("en-IN", {
-                  minimumFractionDigits: 2,
-                })}
+                {formatINR(totalLent)}
               </p>
               <p className="text-xs text-muted-foreground mt-1">
                 {people.length} {people.length === 1 ? "person" : "people"} owe
@@ -221,7 +219,7 @@ export default function LentPage() {
                     </div>
                     <div className="text-right shrink-0">
                       <p className="text-xl font-bold text-primary">
-                        ₹{person.total_amount.toLocaleString("en-IN")}
+                        {formatINR(person.total_amount)}
                       </p>
                     </div>
                   </div>
@@ -273,7 +271,7 @@ export default function LentPage() {
                             </p>
                           </div>
                           <p className="text-sm font-bold text-primary shrink-0">
-                            ₹{split.amount_owed.toLocaleString("en-IN")}
+                            {formatINR(split.amount_owed)}
                           </p>
                           <button
                             onClick={() =>

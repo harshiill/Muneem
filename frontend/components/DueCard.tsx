@@ -2,6 +2,7 @@
 
 import { AlertCircle, CheckCircle, Clock, Trash2 } from 'lucide-react'
 import { expenseApi } from '@/lib/api'
+import { formatINR } from '@/lib/currency'
 import toast from 'react-hot-toast'
 import { useState } from 'react'
 
@@ -98,7 +99,7 @@ export function DueCard({ due, onDelete, onStatusChange }: DueCardProps) {
           <div className="flex items-center justify-between mb-3">
             <div>
               <p className="text-sm text-muted-foreground">
-                <span className="font-medium">Amount:</span> ₹{due.amount.toLocaleString()}
+                <span className="font-medium">Amount:</span> {formatINR(due.amount)}
               </p>
               <p className="text-sm text-muted-foreground">
                 <span className="font-medium">Category:</span> {due.category}

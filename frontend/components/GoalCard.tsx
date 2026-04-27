@@ -1,4 +1,5 @@
 import { Goal } from '@/lib/store'
+import { formatINR } from '@/lib/currency'
 import { Trash2, TrendingUp } from 'lucide-react'
 
 interface GoalInsight {
@@ -63,7 +64,7 @@ export function GoalCard({ goal, insight, onDelete }: GoalCardProps) {
       {/* Target Amount */}
       <div className="mb-4">
         <p className="text-2xl font-bold text-foreground">
-          ${goal.target_amount.toFixed(2)}
+          {formatINR(goal.target_amount)}
         </p>
         <p className="text-xs text-muted-foreground mt-1">Target Amount</p>
       </div>
@@ -86,7 +87,7 @@ export function GoalCard({ goal, insight, onDelete }: GoalCardProps) {
             </div>
             {insight.spent !== undefined && insight.remaining !== undefined && (
               <p className="text-xs text-muted-foreground mt-2">
-                ${insight.spent.toFixed(2)} spent • ${insight.remaining.toFixed(2)} remaining
+                {formatINR(insight.spent)} spent • {formatINR(insight.remaining)} remaining
               </p>
             )}
           </div>
