@@ -3,6 +3,7 @@ import os
 from mem0 import Memory
 
 from dotenv import load_dotenv
+from qdrant_client import QdrantClient
 
 load_dotenv()
 
@@ -11,9 +12,10 @@ qdrant_api_key = os.getenv("QDRANT_API_KEY")
 
 vector_store_config = {"collection_name": "chat_memory"}
 if qdrant_url and qdrant_api_key:
-    vector_store_config["url"] = qdrant_url
-    vector_store_config["port"] = 443
-    vector_store_config["api_key"] = qdrant_api_key
+    # Explicitly instantiate the QdrantClient to bypass mem0's internal param parsing
+    # which fails to correctly assign the port for cloud endpoints.
+    client_instance = QdrantClient(url=qdrant_url, port=443, api_key=qdrant_api_key)
+    vector_store_config["client"] = client_instance
 else:
     vector_store_config["host"] = "localhost"
     vector_store_config["port"] = 6333

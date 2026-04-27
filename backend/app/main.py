@@ -2,7 +2,6 @@ from fastapi import FastAPI
 from app.routes import expenses, chat
 from app import models, schema
 from app.database import engine
-from app.services.qdrant_memory import init_qdrant
 from fastapi.middleware.cors import CORSMiddleware
 import os
 from dotenv import load_dotenv
@@ -29,7 +28,7 @@ app.include_router(chat.router)
 
 @app.on_event("startup")
 def startup_event():
-    init_qdrant()
+    pass
     
 @app.get("/")
 def home():
