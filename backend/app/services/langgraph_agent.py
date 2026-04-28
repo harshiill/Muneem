@@ -76,7 +76,7 @@ def fetch_memory_node(state: GraphState) -> dict:
 
     try:
         raw = mem_client.search(
-            user_id=state["user_id"],
+            filters={"user_id": state["user_id"]},
             query=state["user_question"],
             limit=8,  # fetch more so filtering doesn't starve the context
         )

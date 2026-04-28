@@ -47,7 +47,7 @@ def chat(query: ChatRequest, db: Session = Depends(get_db)):
         memory_context = []
     else:
         try:
-            memories = mem_client.search(user_id=user_id, query=user_question, limit=5)
+            memories = mem_client.search(filters={"user_id": user_id}, query=user_question, limit=5)
 
             memory_context = []
             if memories and memories.get("results"):
@@ -383,7 +383,7 @@ async def chat_stream(query: ChatRequest, db: Session = Depends(get_db)):
             insights = get_weekly_spending(db)
             if not refresh_context:
                 try:
-                    memories = mem_client.search(user_id=user_id, query=user_question)
+                    memories = mem_client.search(filters={"user_id": user_id}, query=user_question)
                     for mem in memories.get("results", []):
                         mem_text = mem.get("memory", "")
                         skip_keywords = [
