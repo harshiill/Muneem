@@ -57,6 +57,11 @@ export function AddExpenseForm() {
       return
     }
 
+    if (parseFloat(amount) < 0) {
+      toast.error('Amount cannot be negative')
+      return
+    }
+
     setIsLoading(true)
     try {
       const goalId = selectedGoal !== '' ? selectedGoal : undefined

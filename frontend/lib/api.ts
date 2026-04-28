@@ -110,8 +110,11 @@ export const chatApi = {
 };
 
 export const expenseApi = {
-  getExpenses: async () => {
-    const response = await apiClient.get("/expenses/");
+  getExpenses: async (category?: string, sort?: string) => {
+    const params = new URLSearchParams();
+    if (category && category !== 'All') params.append("category", category);
+    if (sort) params.append("sort", sort);
+    const response = await apiClient.get(`/expenses/?${params.toString()}`);
     return response.data;
   },
   getInsights: async () => {

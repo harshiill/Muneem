@@ -38,16 +38,17 @@ export default function ExpensesPage() {
   const [deletingId, setDeletingId] = useState<number | null>(null)
   const [deletingSplitId, setDeletingSplitId] = useState<number | null>(null)
   const [selectedCategory, setSelectedCategory] = useState<string>('All')
+  const [sort, setSort] = useState<string>('date_desc')
   const [searchTerm, setSearchTerm] = useState('')
 
   useEffect(() => {
     fetchExpenses()
-  }, [])
+  }, [selectedCategory, sort])
 
   const fetchExpenses = async () => {
     setIsLoading(true)
     try {
-      const data = await expenseApi.getExpenses()
+      const data = await expenseApi.getExpenses(selectedCategory, sort)
       setExpenses(Array.isArray(data) ? data : [])
     } catch (error) {
       console.error('Fetch expenses error:', error)
@@ -95,11 +96,9 @@ export default function ExpensesPage() {
     }
   }
 
-  // Filter expenses
+  // Filter expenses by search term (category and sort are handled by backend)
   const filteredExpenses = expenses.filter((expense) => {
-    const matchesCategory = selectedCategory === 'All' || expense.category === selectedCategory
-    const matchesSearch = expense.title.toLowerCase().includes(searchTerm.toLowerCase())
-    return matchesCategory && matchesSearch
+    return expense.title.toLowerCase().includes(searchTerm.toLowerCase())
   })
 
   // Calculate totals
@@ -182,21 +181,33 @@ export default function ExpensesPage() {
               className="flex-1 px-4 py-3 rounded-lg bg-card border border-border/50 text-foreground placeholder-muted-foreground focus:border-primary focus:outline-none transition-colors"
             />
 
-            {/* Category Filter */}
-            <div className="flex items-center gap-2">
-              <Filter className="w-5 h-5 text-muted-foreground" />
-              <select
-                value={selectedCategory}
-                onChange={(e) => setSelectedCategory(e.target.value)}
-                className="px-4 py-3 rounded-lg bg-card border border-border/50 text-foreground focus:border-primary focus:outline-none transition-colors"
-              >
-                <option value="All">All Categories</option>
-                {CATEGORIES.map((cat) => (
-                  <option key={cat} value={cat}>
-                    {cat}
-                  </option>
-                ))}
-              </select>
+            {/* Category and Sort Filters */}
+            <div className="flex flex-col sm:flex-row items-center gap-2">
+              <div className="flex items-center gap-2">
+                <Filter className="w-5 h-5 text-muted-foreground" />
+                <select
+                  value={selectedCategory}
+                  onChange={(e) => setSelectedCategory(e.target.value)}
+                  className="px-4 py-3 rounded-lg bg-card border border-border/50 text-foreground focus:border-primary focus:outline-none transition-colors"
+                >
+                  <option value="All">All Categories</option>
+                  {CATEGORIES.map((cat) => (
+                    <option key={cat} value={cat}>
+                      {cat}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="flex items-center gap-2">
+                <select
+                  value={sort}
+                  onChange={(e) => setSort(e.target.value)}
+                  className="px-4 py-3 rounded-lg bg-card border border-border/50 text-foreground focus:border-primary focus:outline-none transition-colors"
+                >
+                  <option value="date_desc">Newest First</option>
+                  <option value="date_asc">Oldest First</option>
+                </select>
+              </div>
             </div>
           </div>
 

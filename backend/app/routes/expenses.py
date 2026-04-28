@@ -1,5 +1,6 @@
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
+from typing import Optional
 import traceback
 
 from app import models, schemas
@@ -40,8 +41,15 @@ def add_expense(expense: schemas.ExpenseCreate, db: Session = Depends(get_db)):
 
 
 @router.get("/")
-def get_expenses(db: Session = Depends(get_db)):
-    return db.query(models.Expense).all()
+def get_expenses(category: Optional[str] = None, sort: Optional[str] = None, db: Session = Depends(get_db)):
+    query = db.query(models.Expense)
+    if category and category != "All":
+        query = query.filter(models.Expense.category == category)
+    if sort == "date_desc":
+        query = query.order_by(models.Expense.created_at.desc())
+    elif sort == "date_asc":
+        query = query.order_by(models.Expense.created_at.asc())
+    return query.all()
 
 
 @router.get("/lent/unsettled")
