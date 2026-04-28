@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { goalsApi, expenseApi } from '@/lib/api'
-import { useGoalsStore, Goal } from '@/lib/store'
+import { useGoalsStore } from '@/lib/store'
 import { GoalCard } from '@/components/GoalCard'
 import { AddGoalForm } from '@/components/AddGoalForm'
 import { Loader2, Target } from 'lucide-react'
